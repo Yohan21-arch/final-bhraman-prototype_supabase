@@ -1,0 +1,174 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Bhraman design system — cinematic editorial dark theme.
+ * Ink black canvas, off-white paper text, antique gold accent.
+ */
+
+:root {
+  --radius: 0.5rem;
+  --background: oklch(0.12 0.006 60);
+  --foreground: oklch(0.95 0.012 85);
+  --card: oklch(0.16 0.008 60);
+  --card-foreground: oklch(0.95 0.012 85);
+  --popover: oklch(0.15 0.008 60);
+  --popover-foreground: oklch(0.95 0.012 85);
+  --primary: oklch(0.79 0.128 84);
+  --primary-foreground: oklch(0.14 0.01 60);
+  --secondary: oklch(0.22 0.008 60);
+  --secondary-foreground: oklch(0.93 0.012 85);
+  --muted: oklch(0.2 0.006 60);
+  --muted-foreground: oklch(0.68 0.014 80);
+  --accent: oklch(0.26 0.02 60);
+  --accent-foreground: oklch(0.95 0.012 85);
+  --destructive: oklch(0.58 0.2 25);
+  --destructive-foreground: oklch(0.96 0.01 85);
+  --border: oklch(0.28 0.01 70 / 0.6);
+  --input: oklch(0.3 0.01 70 / 0.6);
+  --ring: oklch(0.79 0.128 84 / 0.6);
+  --gold: #d4af37;
+  --gold-soft: rgba(212, 175, 55, 0.25);
+  --ember: oklch(0.52 0.15 30);
+  --map-land: oklch(0.19 0.008 60);
+  --map-land-hover: oklch(0.29 0.035 75);
+  --map-stroke: oklch(0.35 0.01 70);
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-devanagari: "Noto Serif Devanagari", "Tiro Devanagari Hindi", "Mangal", serif;
+  --font-urdu: "Noto Nastaliq Urdu", "Amiri", "Urdu Typesetting", "Scheherazade New", serif;
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-ember: var(--ember);
+  --color-map-land: var(--map-land);
+  --color-map-land-hover: var(--map-land-hover);
+  --color-map-stroke: var(--map-stroke);
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    color-scheme: dark;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, .display-font {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  .font-devanagari {
+    font-family: var(--font-devanagari);
+  }
+
+  .font-urdu {
+    font-family: var(--font-urdu);
+  }
+}
+
+.eyebrow {
+  font-size: 0.6875rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.grain {
+  position: relative;
+  background-image: radial-gradient(
+      circle at 20% 10%,
+      rgba(147, 51, 234, 0.08),
+      transparent 55%
+    ),
+    radial-gradient(circle at 85% 70%, rgba(212, 175, 55, 0.07), transparent 55%);
+}
+
+.hairline {
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgba(212, 175, 55, 0.25) 30%,
+    rgba(212, 175, 55, 0.25) 70%,
+    transparent
+  );
+}
+
+@keyframes drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-1.5%, -1%, 0) scale(1.04); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.9; }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.3); opacity: 0.2; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+.animate-drift {
+  animation: drift 24s ease-in-out infinite;
+}
+
+.animate-twinkle {
+  animation: twinkle 4s ease-in-out infinite;
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 175, 55, 0.35);
+}

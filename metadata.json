@@ -1,0 +1,8 @@
+{
+  "name": "Remix Bhraman — India Travel Guide \u0026 Hidden Gems",
+  "description": "Cinematic interactive exploration of India's states, landmarks, photo gallery, verified tour guides, and travel price ratings with authentic traveler reviews.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
