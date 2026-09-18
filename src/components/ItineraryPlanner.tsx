@@ -31,9 +31,11 @@ interface GeneratedDay {
 export function ItineraryPlanner({
   onSelectPlace,
   onSelectState,
+  places,
 }: {
   onSelectPlace: (place: Place) => void;
   onSelectState: (state: StateData) => void;
+  places?: Place[];
 }) {
   const [duration, setDuration] = useState<number>(5);
   const [style, setStyle] = useState<string>("balanced");
@@ -44,8 +46,8 @@ export function ItineraryPlanner({
   const { toggle, has } = useTripList();
 
   const handleGenerate = () => {
-    // Collect candidate places from Supabase loaded places
-    const pool = getLoadedPlaces();
+    // Collect candidate places from Supabase loaded places or fallback pool
+    const pool = places && places.length > 0 ? places : getLoadedPlaces();
     let candidates = pool.filter((p) => {
       if (selectedState !== "all" && p.state === selectedState) return true;
       if (selectedRegion !== "all") {

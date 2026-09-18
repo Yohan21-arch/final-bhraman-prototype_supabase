@@ -22,10 +22,12 @@ export function TripListView({
   onSelectPlace,
   onSelectState,
   onBack,
+  places,
 }: {
   onSelectPlace: (place: Place) => void;
   onSelectState: (state: StateData) => void;
   onBack: () => void;
+  places?: Place[];
 }) {
   const { items, remove, clear, updateNotes, setDay } = useTripList();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -36,11 +38,11 @@ export function TripListView({
   const savedPlaces = useMemo(() => {
     return items
       .map((item) => {
-        const place = placeById(item.placeId);
+        const place = (places && places.find((p) => p.id === item.placeId)) || placeById(item.placeId);
         return place ? { ...item, place } : null;
       })
       .filter((item): item is { placeId: string; addedAt: number; notes?: string; customDay?: number; place: Place } => item !== null);
-  }, [items]);
+  }, [items, places]);
 
   const handleExportJson = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savedPlaces, null, 2));

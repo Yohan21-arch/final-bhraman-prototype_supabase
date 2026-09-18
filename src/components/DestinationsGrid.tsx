@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Sparkles, Layers, Filter, Compass, Check, Dices } from "lucide-react";
+import { Sparkles, Layers, Filter, Compass, Check, Dices, RefreshCw, AlertCircle } from "lucide-react";
 import { PLACES_DATA, allTags } from "@/data/places";
 import { STATES_DATA, stateById, REGION_NAMES } from "@/data/states";
 import { PlaceCard } from "@/components/PlaceCard";
@@ -22,6 +22,8 @@ export function DestinationsGrid({
   places = PLACES_DATA,
   isUsingSupabase,
   isLoading,
+  error,
+  onRetry,
 }: {
   onSelectPlace: (place: Place) => void;
   onSelectState: (state: StateData) => void;
@@ -31,6 +33,8 @@ export function DestinationsGrid({
   places?: Place[];
   isUsingSupabase?: boolean;
   isLoading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
 }) {
   const [internalCategory, setInternalCategory] = useState<Category | "all">("all");
   const [internalRegion, setInternalRegion] = useState<Region | "all">("all");
@@ -106,10 +110,20 @@ export function DestinationsGrid({
             <p className="eyebrow flex items-center gap-1.5 text-primary">
               <Compass className="size-3.5" /> Comprehensive Directory
             </p>
-            {isUsingSupabase && (
+            {isLoading ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold text-primary">
+                <RefreshCw className="size-3 animate-spin" />
+                Syncing Supabase...
+              </span>
+            ) : isUsingSupabase ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
                 <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Supabase Synced
+                Supabase Synced ({activePlaces.length} live)
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                <span className="size-1.5 rounded-full bg-amber-500" />
+                Offline Fallback Cache
               </span>
             )}
           </div>
@@ -119,6 +133,24 @@ export function DestinationsGrid({
           <p className="mt-1 text-xs md:text-sm text-muted-foreground">
             Explore {activePlaces.length} hand-scouted historical monuments, natural wonders, and offbeat sanctuaries.
           </p>
+
+          {error && !isUsingSupabase && (
+            <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs text-amber-700 dark:text-amber-300">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="size-4 shrink-0 text-amber-500" />
+                <span>Operating on verified local destination backup ({error}).</span>
+              </div>
+              {onRetry && (
+                <button
+                  onClick={onRetry}
+                  className="inline-flex items-center gap-1 rounded-md bg-amber-500/20 px-2.5 py-1 text-[11px] font-semibold hover:bg-amber-500/30 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className="size-3" />
+                  Retry Sync
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Quick Search & Surprise Me */}
@@ -243,7 +275,23 @@ export function DestinationsGrid({
           )}
         </div>
 
-        {filteredPlaces.length > 0 ? (
+        {isLoading && activePlaces.length === 0 ? (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="animate-pulse overflow-hidden rounded-2xl border border-border/80 bg-card/60"
+              >
+                <div className="aspect-[4/3] w-full bg-muted/70" />
+                <div className="p-4 space-y-2.5">
+                  <div className="h-4 w-3/4 rounded bg-muted/80" />
+                  <div className="h-3 w-1/2 rounded bg-muted/60" />
+                  <div className="h-10 w-full rounded bg-muted/40" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filteredPlaces.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredPlaces.map((place) => (
               <PlaceCard

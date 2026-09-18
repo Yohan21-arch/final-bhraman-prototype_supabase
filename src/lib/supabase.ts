@@ -1,45 +1,50 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-// Safe helper to read environment variables in Vite/browser and Node environments
-function getEnvVar(key: string): string {
-  try {
-    const metaEnv = (import.meta as unknown as { env?: Record<string, string | undefined> })?.env;
-    if (metaEnv && typeof metaEnv[key] === "string") {
-      return metaEnv[key]!;
-    }
-  } catch {
-    // Ignore in non-Vite contexts
-  }
-
-  try {
-    if (typeof process !== "undefined" && process?.env && typeof process.env[key] === "string") {
-      return process.env[key]!;
-    }
-  } catch {
-    // Ignore in non-Node contexts
-  }
-
-  return "";
-}
-
-// Read Supabase credentials from client-side environment variables
-const rawSupabaseUrl = getEnvVar("VITE_SUPABASE_URL") || getEnvVar("SUPABASE_URL");
-const rawSupabaseAnonKey = getEnvVar("VITE_SUPABASE_ANON_KEY") || getEnvVar("SUPABASE_ANON_KEY");
-
-function cleanSupabaseUrl(url: string): string {
+// Clean and normalize Supabase project URL (removes trailing slashes and /rest/v1 if present)
+function cleanSupabaseUrl(url?: string): string {
   let u = (url || "").trim();
-  // Strip trailing slashes
   u = u.replace(/\/+$/, "");
-  // Strip trailing /rest/v1 or /rest/v1/
   u = u.replace(/\/rest\/v1\/?$/, "");
   return u;
 }
+
+// Read client-side Supabase credentials using direct static access for Vite bundler replacement
+const viteSupabaseUrl =
+  typeof import.meta !== "undefined" && import.meta.env
+    ? import.meta.env.VITE_SUPABASE_URL
+    : undefined;
+
+const nodeSupabaseUrl =
+  typeof process !== "undefined" && process.env
+    ? process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
+    : undefined;
+
+const rawSupabaseUrl =
+  (typeof viteSupabaseUrl === "string" && viteSupabaseUrl) ||
+  (typeof nodeSupabaseUrl === "string" && nodeSupabaseUrl) ||
+  "";
+
+const viteAnonKey =
+  typeof import.meta !== "undefined" && import.meta.env
+    ? import.meta.env.VITE_SUPABASE_ANON_KEY
+    : undefined;
+
+const nodeAnonKey =
+  typeof process !== "undefined" && process.env
+    ? process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
+    : undefined;
+
+const rawSupabaseAnonKey =
+  (typeof viteAnonKey === "string" && viteAnonKey) ||
+  (typeof nodeAnonKey === "string" && nodeAnonKey) ||
+  "";
 
 export const SUPABASE_URL = cleanSupabaseUrl(rawSupabaseUrl);
 export const SUPABASE_ANON_KEY = (rawSupabaseAnonKey || "").trim();
 
 /**
  * Checks if valid Supabase environment variables have been configured.
+ * Validates that URL is non-empty, points to an HTTP(S) endpoint, and isn't a placeholder.
  */
 export function isSupabaseConfigured(): boolean {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
@@ -63,7 +68,8 @@ const effectiveKey = isSupabaseConfigured()
   : "placeholder-anon-key";
 
 /**
- * Supabase client instance configured using environment variables.
+ * Supabase client instance configured using public client-side environment variables.
+ * Safe for browser usage under Row Level Security (RLS).
  */
 export const supabase: SupabaseClient = createClient(effectiveUrl, effectiveKey, {
   auth: {
@@ -71,3 +77,4 @@ export const supabase: SupabaseClient = createClient(effectiveUrl, effectiveKey,
     autoRefreshToken: true,
   },
 });
+

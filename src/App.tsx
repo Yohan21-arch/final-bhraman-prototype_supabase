@@ -26,8 +26,10 @@ import { ItineraryPlanner } from "@/components/ItineraryPlanner";
 import { DestinationsGrid, type DestinationsGridFilters } from "@/components/DestinationsGrid";
 import { ImageGallery } from "@/components/ImageGallery";
 import { TourGuidesView } from "@/components/TourGuidesView";
+import { HeroSlideshow } from "@/components/HeroSlideshow";
 import { PlaceCard } from "@/components/PlaceCard";
 import { YatraChatbot } from "@/components/YatraChatbot";
+import { IntroAnimationSketch } from "@/components/IntroAnimationSketch";
 import { PLACES_DATA } from "@/data/places";
 import { STATES_DATA, stateById } from "@/data/states";
 import { useDestinations } from "@/services/destinationService";
@@ -43,13 +45,24 @@ interface NavContextEntry {
 }
 
 export default function App() {
-  const { places, loading: isPlacesLoading, isUsingSupabase, refresh: refreshDestinations } = useDestinations();
+  const {
+    places,
+    loading: isPlacesLoading,
+    error: placesError,
+    isUsingSupabase,
+    refresh: refreshDestinations,
+  } = useDestinations();
   const [activeTab, setActiveTab] = useState<NavTab>("map");
   const [activePlace, setActivePlace] = useState<Place | null>(null);
   const [activeState, setActiveState] = useState<StateData | null>(null);
   const [panelStateId, setPanelStateId] = useState<string | null>(null);
   const [chatInitialPrompt, setChatInitialPrompt] = useState<string | null>(null);
   const [navStack, setNavStack] = useState<NavContextEntry[]>([]);
+  const [showIntro, setShowIntro] = useState(true);
+
+  const handleIntroFinished = useCallback(() => {
+    setShowIntro(false);
+  }, []);
 
   // Map filters (preserved across navigation)
   const [selectedRegion, setSelectedRegion] = useState<Region | "all">("all");
@@ -325,10 +338,17 @@ export default function App() {
       ? "Back to My List"
       : "Back to Map";
 
+  const activeViewKey = activePlace
+    ? `place-${activePlace.id}`
+    : activeState
+    ? `state-${activeState.id}`
+    : activeTab;
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col antialiased selection:bg-primary/25 selection:text-primary">
       {/* Top Navigation */}
       <Navbar
+        places={places}
         activeTab={activeTab}
         onSelectTab={(tab) => {
           setActiveTab(tab);
@@ -346,10 +366,24 @@ export default function App() {
         onSurpriseMe={handleSurpriseMe}
       />
 
-      {/* Main Dynamic View Switching */}
-      <div className="flex-1">
-        {/* VIEW 1: Immersive Place Detail */}
-        {activePlace ? (
+      {/* Main Dynamic View Switching with Slide Change Animation */}
+      <div className="flex-1 overflow-x-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeViewKey}
+            initial={{ opacity: 0, scale: 0.96, x: -40 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            exit={{
+              opacity: 0,
+              scale: 0.92,
+              x: 90,
+              transition: { duration: 0.28, ease: [0.32, 0.72, 0, 1] },
+            }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full"
+          >
+            {/* VIEW 1: Immersive Place Detail */}
+            {activePlace ? (
           <PlaceDetail
             place={activePlace}
             backLabel={currentBackLabel}
@@ -375,12 +409,14 @@ export default function App() {
         ) : activeTab === "planner" ? (
           /* VIEW 3: AI Expedition / Itinerary Planner */
           <ItineraryPlanner
+            places={places}
             onSelectPlace={(place) => handleSelectPlace(place, "Back to Planner")}
             onSelectState={handleOpenFullStateGuide}
           />
         ) : activeTab === "my-list" ? (
           /* VIEW 4: My Bhraman Saved Trip List */
           <TripListView
+            places={places}
             onSelectPlace={(place) => handleSelectPlace(place, "Back to My List")}
             onSelectState={handleOpenFullStateGuide}
             onBack={() => setActiveTab("map")}
@@ -396,6 +432,7 @@ export default function App() {
         ) : activeTab === "guides" ? (
           /* VIEW 6: Verified Tour Guides & Travel Price Ratings */
           <TourGuidesView
+            places={places}
             onSelectPlace={(place) => handleSelectPlace(place, "Back to Tour Guides")}
             onAskYatra={handleAskYatra}
           />
@@ -405,6 +442,8 @@ export default function App() {
             places={places}
             isUsingSupabase={isUsingSupabase}
             isLoading={isPlacesLoading}
+            error={placesError}
+            onRetry={refreshDestinations}
             filters={gridFilters}
             onFiltersChange={setGridFilters}
             onSelectPlace={(place) =>
@@ -423,140 +462,12 @@ export default function App() {
         ) : (
           /* VIEW 6: Home / Interactive Map Explorer */
           <main className="mx-auto max-w-7xl px-4 pb-24 pt-6 md:px-8">
-            {/* Editorial Hero Header */}
-            <section className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-b from-card via-card/70 to-secondary/30 p-6 md:p-12 mb-8 shadow-2xl grain">
-              <div className="relative z-10 max-w-3xl space-y-4">
-                <div className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3.5 py-1 text-xs uppercase tracking-[0.2em] text-primary font-semibold backdrop-blur-md">
-                  <Compass className="size-3.5" />
-                  <span>Cinematic India Travel Atlas</span>
-                </div>
-
-                <h1 className="display-font text-4xl font-extrabold tracking-tight text-foreground sm:text-6xl lg:text-7xl leading-[0.98]">
-                  Discover the Soul of India
-                </h1>
-
-                <p className="text-sm md:text-base leading-relaxed text-muted-foreground max-w-2xl font-sans">
-                  From high-altitude Himalayan monasteries and golden desert citadels to secret tropical lagoons and thousand-year-old rock-cut sanctuaries.
-                </p>
-
-                {/* Quick Explorer Category Toggles, Surprise Me & Ask Yatra Banner */}
-                <div className="flex flex-wrap items-center gap-3 pt-2">
-                  <button
-                    id="hero-surprise-me-btn"
-                    onClick={handleSurpriseMe}
-                    className="inline-flex items-center gap-2 rounded-full border border-primary/80 bg-primary/15 px-5 py-2.5 text-xs uppercase tracking-[0.14em] font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-md active:scale-95 group cursor-pointer"
-                  >
-                    <Dices className="size-3.5 transition-transform group-hover:rotate-180 duration-500" />
-                    <span>Surprise Me</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setCategoryFilter("all");
-                    }}
-                    className={cn(
-                      "inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs uppercase tracking-[0.14em] font-semibold transition-all shadow-md cursor-pointer",
-                      categoryFilter === "all"
-                        ? "bg-primary text-primary-foreground"
-                        : "border border-border/80 bg-background/80 text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Globe className="size-3.5" />
-                    <span>All ({places.length})</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setCategoryFilter("hidden");
-                    }}
-                    className={cn(
-                      "inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs uppercase tracking-[0.14em] font-semibold transition-all shadow-md cursor-pointer",
-                      categoryFilter === "hidden"
-                        ? "border border-primary bg-primary text-primary-foreground"
-                        : "border border-primary/50 bg-primary/10 text-primary hover:bg-primary/20"
-                    )}
-                  >
-                    <Sparkles className="size-3.5" />
-                    <span>Hidden Gems</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setCategoryFilter("iconic");
-                    }}
-                    className={cn(
-                      "inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs uppercase tracking-[0.14em] font-semibold transition-all shadow-md cursor-pointer",
-                      categoryFilter === "iconic"
-                        ? "bg-primary text-primary-foreground"
-                        : "border border-border/80 bg-background/80 text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Flame className="size-3.5" />
-                    <span>Iconic Wonders</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setActiveTab("gallery");
-                      try {
-                        window.history.pushState({ type: "tab", tab: "gallery" }, "", "#/tab/gallery");
-                      } catch {}
-                    }}
-                    className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-background/80 px-5 py-2.5 text-xs uppercase tracking-[0.14em] font-semibold text-muted-foreground hover:border-primary hover:text-foreground transition-all shadow-md cursor-pointer"
-                  >
-                    <Camera className="size-3.5 text-primary" />
-                    <span>Photo Gallery</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setActiveTab("guides");
-                      try {
-                        window.history.pushState({ type: "tab", tab: "guides" }, "", "#/tab/guides");
-                      } catch {}
-                    }}
-                    className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-background/80 px-5 py-2.5 text-xs uppercase tracking-[0.14em] font-semibold text-muted-foreground hover:border-primary hover:text-foreground transition-all shadow-md cursor-pointer"
-                  >
-                    <ShieldCheck className="size-3.5 text-primary" />
-                    <span>Tour Guides & Tariffs</span>
-                  </button>
-
-                  <button
-                    onClick={() =>
-                      handleAskYatra("Hi Yatra! I'd like a curated recommendation based on my current travel mood.")
-                    }
-                    className="inline-flex items-center gap-2 rounded-full border border-[#F2A93B]/60 bg-[#17233D] px-5 py-2.5 text-xs uppercase tracking-[0.14em] font-bold text-[#F2A93B] hover:bg-[#101A30] transition-all shadow-md cursor-pointer"
-                  >
-                    <Sparkles className="size-3.5 text-[#F2A93B]" />
-                    <span>Chat with Yatra AI</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Stat Highlights */}
-              <div className="mt-8 grid grid-cols-2 gap-4 border-t border-border/60 pt-6 sm:grid-cols-4">
-                <div>
-                  <p className="display-font text-2xl font-bold text-primary">28+</p>
-                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider">States & Territories</p>
-                </div>
-                <div>
-                  <p className="display-font text-2xl font-bold text-foreground">100%</p>
-                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Field Verified</p>
-                </div>
-                <div>
-                  <p className="display-font text-2xl font-bold text-primary">Dual Mode</p>
-                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Iconic & Secret</p>
-                </div>
-                <div>
-                  <p className="display-font text-2xl font-bold text-foreground">Yatra AI</p>
-                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Travel Companion</p>
-                </div>
-              </div>
-            </section>
+            {/* Cinematic Destination Slideshow Hero Header */}
+            <HeroSlideshow />
 
             {/* Interactive Cartography Map Section */}
             <section className="space-y-4 mb-16">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
                   <p className="eyebrow flex items-center gap-1.5 text-primary">
                     <MapPin className="size-3.5" /> Interactive Explorer
@@ -565,10 +476,85 @@ export default function App() {
                     Tap Any State to Reveal Curated Places
                   </h2>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Pan & zoom freely or click state outlines for instant drawer guides
-                </p>
+
+                {/* Map Pin Category Filters (All / Hidden Gems / Iconic Wonders) */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={() => setCategoryFilter("all")}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer",
+                      categoryFilter === "all"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "border border-border/80 bg-background/80 text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Globe className="size-3" />
+                    <span>All ({places.length})</span>
+                  </button>
+
+                  <button
+                    onClick={() => setCategoryFilter("hidden")}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer",
+                      categoryFilter === "hidden"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
+                    )}
+                  >
+                    <Sparkles className="size-3" />
+                    <span>Hidden Gems</span>
+                  </button>
+
+                  <button
+                    onClick={() => setCategoryFilter("iconic")}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer",
+                      categoryFilter === "iconic"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "border border-border/80 bg-background/80 text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Flame className="size-3" />
+                    <span>Iconic Wonders</span>
+                  </button>
+
+                  <span className="hidden sm:inline-block h-4 w-px bg-border/80 my-auto" />
+
+                  {/* Quick View Options (Triggers Slide Change Animation) */}
+                  <button
+                    id="quick-nav-tour-guides-btn"
+                    onClick={() => {
+                      setActiveTab("guides");
+                      try {
+                        window.history.pushState({ type: "tab", tab: "guides" }, "", "#/tab/guides");
+                      } catch {}
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-background/80 px-3.5 py-1.5 text-xs font-semibold text-muted-foreground hover:border-primary hover:text-foreground transition-all cursor-pointer shadow-xs active:scale-95"
+                    title="Certified ASI Tour Guides & Pricing Rates"
+                  >
+                    <ShieldCheck className="size-3 text-primary" />
+                    <span>Tour Guides</span>
+                  </button>
+
+                  <button
+                    id="quick-nav-gallery-btn"
+                    onClick={() => {
+                      setActiveTab("gallery");
+                      try {
+                        window.history.pushState({ type: "tab", tab: "gallery" }, "", "#/tab/gallery");
+                      } catch {}
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-background/80 px-3.5 py-1.5 text-xs font-semibold text-muted-foreground hover:border-primary hover:text-foreground transition-all cursor-pointer shadow-xs active:scale-95"
+                    title="India Photographic Travel Gallery"
+                  >
+                    <Camera className="size-3 text-primary" />
+                    <span>Photo Gallery</span>
+                  </button>
+                </div>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Pan & zoom freely or click state outlines for instant drawer guides
+              </p>
 
               <IndiaMap
                 places={places}
@@ -613,6 +599,8 @@ export default function App() {
             </section>
           </main>
         )}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {/* Slide-in State Panel Drawer */}
@@ -630,6 +618,7 @@ export default function App() {
 
       {/* Yatra Floating India Travel Chatbot */}
       <YatraChatbot
+        places={places}
         onSelectPlace={(p) => handleSelectPlace(p, "Back to Travel Chat")}
         onSelectState={handleOpenFullStateGuide}
         initialPrompt={chatInitialPrompt}
@@ -638,6 +627,13 @@ export default function App() {
 
       {/* Global Footer */}
       <Footer onSelectState={handleOpenFullStateGuide} onDataRefreshed={refreshDestinations} />
+
+      {/* Cinematic Monument Silhouette Morph Intro Animation */}
+      <AnimatePresence>
+        {showIntro && (
+          <IntroAnimationSketch onFinished={handleIntroFinished} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -77,6 +77,7 @@ interface YatraChatbotProps {
   onSelectState?: (state: StateData) => void;
   initialPrompt?: string | null;
   onClearInitialPrompt?: () => void;
+  places?: Place[];
 }
 
 export function YatraChatbot({
@@ -84,6 +85,7 @@ export function YatraChatbot({
   onSelectState,
   initialPrompt,
   onClearInitialPrompt,
+  places,
 }: YatraChatbotProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -232,7 +234,7 @@ export function YatraChatbot({
   // Find destination matching place or state to navigate
   const handleNavigateDestination = (destinationName: string) => {
     const term = destinationName.toLowerCase();
-    const placesPool = getLoadedPlaces();
+    const placesPool = places && places.length > 0 ? places : getLoadedPlaces();
     const matchedPlace = placesPool.find(
       (p) => p.name.toLowerCase().includes(term) || term.includes(p.name.toLowerCase())
     );

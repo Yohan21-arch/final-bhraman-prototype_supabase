@@ -29,9 +29,10 @@ import { cn } from "@/lib/utils";
 interface TourGuidesViewProps {
   onSelectPlace?: (place: Place) => void;
   onAskYatra?: (prompt: string) => void;
+  places?: Place[];
 }
 
-export function TourGuidesView({ onSelectPlace, onAskYatra }: TourGuidesViewProps) {
+export function TourGuidesView({ onSelectPlace, onAskYatra, places }: TourGuidesViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRegion, setSelectedRegion] = useState<string>("all");
   const [selectedLicense, setSelectedLicense] = useState<string>("all");
@@ -456,7 +457,7 @@ export function TourGuidesView({ onSelectPlace, onAskYatra }: TourGuidesViewProp
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {guide.placesCovered.map((pid) => {
-                    const place = placeById(pid);
+                    const place = (places && places.find((p) => p.id === pid)) || placeById(pid);
                     return (
                       <button
                         key={pid}

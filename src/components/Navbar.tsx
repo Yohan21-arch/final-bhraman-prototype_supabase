@@ -32,12 +32,14 @@ export function Navbar({
   onSelectPlace,
   onSelectState,
   onSurpriseMe,
+  places,
 }: {
   activeTab: NavTab;
   onSelectTab: (tab: NavTab) => void;
   onSelectPlace: (place: Place) => void;
   onSelectState: (state: StateData) => void;
   onSurpriseMe?: () => void;
+  places?: Place[];
 }) {
   const { count } = useTripList();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -73,6 +75,7 @@ export function Navbar({
         {/* Center Search Bar */}
         <div className="hidden md:block flex-1 max-w-md mx-4">
           <SearchBar
+            places={places}
             onSelectPlace={onSelectPlace}
             onSelectState={onSelectState}
           />
@@ -118,7 +121,7 @@ export function Navbar({
             <button
               onClick={onSurpriseMe}
               title="Open a random destination"
-              className="inline-flex items-center gap-1.5 rounded-full border border-primary/50 bg-primary/10 px-3.5 py-2 text-xs uppercase tracking-[0.14em] font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-xs active:scale-95"
+              className="inline-flex items-center gap-1.5 rounded-full border border-primary/50 bg-primary/10 px-3.5 py-2 text-xs uppercase tracking-[0.14em] font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-xs active:scale-95 cursor-pointer"
             >
               <Dices className="size-3.5 transition-transform hover:rotate-180" />
               <span>Surprise Me</span>
@@ -165,6 +168,7 @@ export function Navbar({
         <div className="border-b border-border bg-background/95 p-4 backdrop-blur-2xl lg:hidden space-y-4">
           <div className="w-full">
             <SearchBar
+              places={places}
               onSelectPlace={(p) => {
                 setMobileMenuOpen(false);
                 onSelectPlace(p);
