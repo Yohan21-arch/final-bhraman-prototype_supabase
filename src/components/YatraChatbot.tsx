@@ -22,6 +22,8 @@ import { cn } from "@/lib/utils";
 import type { Place, StateData } from "@/types";
 import { PLACES_DATA, placesByState, getLoadedPlaces } from "@/data/places";
 import { STATES_DATA } from "@/data/states";
+import { useAuth } from "@/contexts/AuthContext";
+import { userAccountService } from "@/services/userAccountService";
 
 export interface BookingData {
   destination: string;
@@ -87,6 +89,7 @@ export function YatraChatbot({
   onClearInitialPrompt,
   places,
 }: YatraChatbotProps) {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [input, setInput] = useState("");
@@ -183,6 +186,16 @@ export function YatraChatbot({
       const rawReply = data.reply || "I'm having trouble connecting right now — please try again in a moment.";
 
       const { cleanText, booking } = parseBooking(rawReply);
+
+      if (booking) {
+        userAccountService.recordDemoBooking(user?.id || "guest", {
+          reference: booking.reference,
+          destination: booking.destination,
+          dates: booking.dates,
+          travelers: booking.travelers,
+          type: booking.type,
+        });
+      }
 
       const assistantMessage: ChatMessage = {
         id: "assistant-" + Date.now(),

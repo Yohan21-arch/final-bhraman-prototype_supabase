@@ -13,11 +13,23 @@ import {
 } from "lucide-react";
 import { SearchBar } from "@/components/SearchBar";
 import { CyclingBrandName } from "@/components/CyclingBrandName";
+import { ProfileMenu } from "@/components/account/ProfileMenu";
 import { useTripList } from "@/lib/trip-list";
 import type { Place, StateData } from "@/types";
 import { cn } from "@/lib/utils";
 
-export type NavTab = "map" | "destinations" | "gallery" | "guides" | "planner" | "my-list";
+export type NavTab =
+  | "map"
+  | "destinations"
+  | "gallery"
+  | "guides"
+  | "planner"
+  | "my-list"
+  | "profile"
+  | "saved-places"
+  | "my-trips"
+  | "booking-history"
+  | "settings";
 
 interface NavItem {
   id: NavTab;
@@ -32,6 +44,7 @@ export function Navbar({
   onSelectPlace,
   onSelectState,
   onSurpriseMe,
+  onOpenAuthModal,
   places,
 }: {
   activeTab: NavTab;
@@ -39,6 +52,7 @@ export function Navbar({
   onSelectPlace: (place: Place) => void;
   onSelectState: (state: StateData) => void;
   onSurpriseMe?: () => void;
+  onOpenAuthModal?: () => void;
   places?: Place[];
 }) {
   const { count } = useTripList();
@@ -127,10 +141,24 @@ export function Navbar({
               <span>Surprise Me</span>
             </button>
           )}
+
+          {/* User Account / Profile Menu */}
+          <div className="ml-1 pl-2 border-l border-border/60">
+            <ProfileMenu
+              onSelectTab={onSelectTab}
+              onOpenAuthModal={onOpenAuthModal || (() => {})}
+            />
+          </div>
         </div>
 
         {/* Mobile Action Buttons */}
         <div className="flex items-center gap-2 lg:hidden">
+          {/* Mobile Profile Menu */}
+          <ProfileMenu
+            onSelectTab={onSelectTab}
+            onOpenAuthModal={onOpenAuthModal || (() => {})}
+          />
+
           {onSurpriseMe && (
             <button
               onClick={onSurpriseMe}

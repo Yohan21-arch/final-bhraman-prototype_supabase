@@ -30,6 +30,13 @@ import { HeroSlideshow } from "@/components/HeroSlideshow";
 import { PlaceCard } from "@/components/PlaceCard";
 import { YatraChatbot } from "@/components/YatraChatbot";
 import { IntroAnimationSketch } from "@/components/IntroAnimationSketch";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthModal } from "@/components/account/AuthModal";
+import { ProfileView } from "@/components/account/ProfileView";
+import { SavedPlacesView } from "@/components/account/SavedPlacesView";
+import { MyTripsView } from "@/components/account/MyTripsView";
+import { BookingHistoryView } from "@/components/account/BookingHistoryView";
+import { SettingsView } from "@/components/account/SettingsView";
 import { PLACES_DATA } from "@/data/places";
 import { STATES_DATA, stateById } from "@/data/states";
 import { useDestinations } from "@/services/destinationService";
@@ -44,7 +51,21 @@ interface NavContextEntry {
   label: string;
 }
 
-export default function App() {
+const VALID_NAV_TABS: NavTab[] = [
+  "map",
+  "destinations",
+  "gallery",
+  "guides",
+  "planner",
+  "my-list",
+  "profile",
+  "saved-places",
+  "my-trips",
+  "booking-history",
+  "settings",
+];
+
+function BhramanApp() {
   const {
     places,
     loading: isPlacesLoading,
@@ -59,6 +80,7 @@ export default function App() {
   const [chatInitialPrompt, setChatInitialPrompt] = useState<string | null>(null);
   const [navStack, setNavStack] = useState<NavContextEntry[]>([]);
   const [showIntro, setShowIntro] = useState(true);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   const handleIntroFinished = useCallback(() => {
     setShowIntro(false);
@@ -95,7 +117,7 @@ export default function App() {
       }
     } else if (hash.startsWith("#/tab/")) {
       const tab = hash.replace("#/tab/", "") as NavTab;
-      if (["map", "destinations", "gallery", "guides", "planner", "my-list"].includes(tab)) {
+      if (VALID_NAV_TABS.includes(tab)) {
         setActiveTab(tab);
       }
     }
@@ -122,7 +144,7 @@ export default function App() {
         }
       } else if (hash.startsWith("#/tab/")) {
         const tab = hash.replace("#/tab/", "") as NavTab;
-        if (["map", "destinations", "gallery", "guides", "planner", "my-list"].includes(tab)) {
+        if (VALID_NAV_TABS.includes(tab)) {
           setActiveTab(tab);
           setActivePlace(null);
           setActiveState(null);
@@ -336,6 +358,16 @@ export default function App() {
       ? "Back to Planner"
       : activeTab === "my-list"
       ? "Back to My List"
+      : activeTab === "profile"
+      ? "Back to Profile"
+      : activeTab === "saved-places"
+      ? "Back to Saved Places"
+      : activeTab === "my-trips"
+      ? "Back to Travel Plans"
+      : activeTab === "booking-history"
+      ? "Back to Booking History"
+      : activeTab === "settings"
+      ? "Back to Settings"
       : "Back to Map";
 
   const activeViewKey = activePlace
@@ -364,6 +396,7 @@ export default function App() {
         onSelectPlace={(place) => handleSelectPlace(place, "Back to Search")}
         onSelectState={handleOpenFullStateGuide}
         onSurpriseMe={handleSurpriseMe}
+        onOpenAuthModal={() => setAuthModalOpen(true)}
       />
 
       {/* Main Dynamic View Switching with Slide Change Animation */}
@@ -458,6 +491,63 @@ export default function App() {
             }
             onSelectState={handleOpenFullStateGuide}
             onSurpriseMe={handleSurpriseMe}
+          />
+        ) : activeTab === "profile" ? (
+          /* VIEW 8: User Account & Profile Settings */
+          <ProfileView
+            onSelectTab={(t) => {
+              setActiveTab(t);
+              try {
+                window.history.pushState(null, "", `#/tab/${t}`);
+              } catch {}
+            }}
+            onOpenAuthModal={() => setAuthModalOpen(true)}
+          />
+        ) : activeTab === "saved-places" ? (
+          /* VIEW 9: Cloud-Synced Saved Wishlist */
+          <SavedPlacesView
+            places={places}
+            onSelectPlace={(place) => handleSelectPlace(place, "Back to Saved Places")}
+            onSelectState={handleOpenFullStateGuide}
+            onSelectTab={(t) => {
+              setActiveTab(t);
+              try {
+                window.history.pushState(null, "", `#/tab/${t}`);
+              } catch {}
+            }}
+          />
+        ) : activeTab === "my-trips" ? (
+          /* VIEW 10: Travel Plans & Itineraries */
+          <MyTripsView
+            places={places}
+            onSelectTab={(t) => {
+              setActiveTab(t);
+              try {
+                window.history.pushState(null, "", `#/tab/${t}`);
+              } catch {}
+            }}
+          />
+        ) : activeTab === "booking-history" ? (
+          /* VIEW 11: Demo / Illustrative Booking Records */
+          <BookingHistoryView
+            onSelectTab={(t) => {
+              setActiveTab(t);
+              try {
+                window.history.pushState(null, "", `#/tab/${t}`);
+              } catch {}
+            }}
+            onAskYatra={handleAskYatra}
+          />
+        ) : activeTab === "settings" ? (
+          /* VIEW 12: Account Settings & Cloud Sync Preferences */
+          <SettingsView
+            onSelectTab={(t) => {
+              setActiveTab(t);
+              try {
+                window.history.pushState(null, "", `#/tab/${t}`);
+              } catch {}
+            }}
+            onOpenAuthModal={() => setAuthModalOpen(true)}
           />
         ) : (
           /* VIEW 6: Home / Interactive Map Explorer */
@@ -634,6 +724,20 @@ export default function App() {
           <IntroAnimationSketch onFinished={handleIntroFinished} />
         )}
       </AnimatePresence>
+
+      {/* Supabase Authentication Modal */}
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+      />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <BhramanApp />
+    </AuthProvider>
   );
 }

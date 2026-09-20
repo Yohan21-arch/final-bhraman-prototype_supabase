@@ -158,3 +158,49 @@ export interface TourGuide {
   bio: string;
   contactHint: string;
 }
+
+export interface Profile {
+  id: string; // references auth.users(id)
+  full_name?: string | null;
+  avatar_url?: string | null;
+  preferred_language?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SavedDestination {
+  id: string;
+  user_id: string;
+  destination_id: string;
+  notes?: string | null;
+  created_at?: string;
+  destination?: Place;
+}
+
+export interface TravelPlan {
+  id: string;
+  user_id: string;
+  name: string;
+  description?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  destinations: string[]; // destination IDs
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface BookingRecord {
+  id: string;
+  user_id: string;
+  reference_id: string;
+  destination_id?: string | null;
+  destination_name: string;
+  booking_type: string;
+  dates?: string | null;
+  travelers?: string | null;
+  status: "confirmed" | "pending" | "cancelled";
+  notes?: string | null;
+  details?: Record<string, any>;
+  created_at?: string;
+  isDemo?: boolean;
+}

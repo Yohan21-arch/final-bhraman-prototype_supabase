@@ -28,6 +28,8 @@ import { PlaceTourGuideSection } from "@/components/PlaceTourGuideSection";
 import { ReviewsSection } from "@/components/ReviewsSection";
 import { getPlaceGalleryImages } from "@/lib/gallery";
 import { useTripList } from "@/lib/trip-list";
+import { useAuth } from "@/contexts/AuthContext";
+import { userAccountService } from "@/services/userAccountService";
 import { cn } from "@/lib/utils";
 
 export function PlaceDetail({
@@ -48,6 +50,7 @@ export function PlaceDetail({
   onAskYatra?: (query: string) => void;
 }) {
   const state = stateById(place.state);
+  const { user } = useAuth();
   const { has, toggle, items, updateNotes } = useTripList();
   const [activeImage, setActiveImage] = useState(0);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -61,6 +64,18 @@ export function PlaceDetail({
   const galleryImages = useMemo(() => getPlaceGalleryImages(place), [place]);
   const isSaved = has(place.id);
   const related = relatedPlaces(place);
+
+  const handleBookmarkToggle = async () => {
+    const willBeSaved = !isSaved;
+    toggle(place.id);
+    if (user) {
+      if (willBeSaved) {
+        await userAccountService.addSavedDestination(user.id, place.id);
+      } else {
+        await userAccountService.removeSavedDestination(user.id, place.id);
+      }
+    }
+  };
 
   // Keyboard shortcut: Escape to go back / close
   useEffect(() => {
@@ -141,7 +156,7 @@ export function PlaceDetail({
           </button>
 
           <button
-            onClick={() => toggle(place.id)}
+            onClick={handleBookmarkToggle}
             aria-label={isSaved ? "Remove from saved list" : "Save destination"}
             className={cn(
               "inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-4 py-2 text-xs uppercase tracking-[0.14em] font-semibold transition-all cursor-pointer",

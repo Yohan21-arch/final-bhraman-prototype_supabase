@@ -1,9 +1,11 @@
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode, type MouseEvent } from "react";
 import { motion } from "motion/react";
 import { Bookmark, BookmarkCheck, Sparkles, MapPin } from "lucide-react";
 import type { Place } from "@/types";
 import { stateById } from "@/data/states";
 import { useTripList } from "@/lib/trip-list";
+import { useAuth } from "@/contexts/AuthContext";
+import { userAccountService } from "@/services/userAccountService";
 import { cn } from "@/lib/utils";
 
 export interface PlaceCardProps {
@@ -67,9 +69,23 @@ export function PlaceCard({
   place,
   onSelect,
 }: PlaceCardProps) {
+  const { user } = useAuth();
   const { has, toggle } = useTripList();
   const saved = has(place.id);
   const state = stateById(place.state);
+
+  const handleBookmarkToggle = async (e: MouseEvent) => {
+    e.stopPropagation();
+    const willBeSaved = !saved;
+    toggle(place.id);
+    if (user) {
+      if (willBeSaved) {
+        await userAccountService.addSavedDestination(user.id, place.id);
+      } else {
+        await userAccountService.removeSavedDestination(user.id, place.id);
+      }
+    }
+  };
 
   return (
     <motion.article
@@ -98,10 +114,7 @@ export function PlaceCard({
         )}
 
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            toggle(place.id);
-          }}
+          onClick={handleBookmarkToggle}
           aria-label={saved ? "Remove from list" : "Save to list"}
           className={cn(
             "absolute right-3 top-3 z-10 flex size-8 items-center justify-center rounded-full border backdrop-blur-md transition-all",
