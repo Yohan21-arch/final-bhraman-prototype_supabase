@@ -46,7 +46,7 @@ export function ProfileMenu({ onSelectTab, onOpenAuthModal }: ProfileMenuProps) 
       <button
         type="button"
         onClick={onOpenAuthModal}
-        className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-background/80 hover:bg-muted/80 px-3.5 py-1.5 text-xs font-semibold text-foreground transition-all duration-150 shadow-xs hover:border-primary/50 cursor-pointer group"
+        className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-background/80 hover:bg-muted/80 px-3.5 py-1.5 text-xs font-semibold text-foreground transition-all duration-150 shadow-xs hover:border-primary/50 cursor-pointer group whitespace-nowrap"
       >
         <User className="size-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
         <span>Sign In</span>

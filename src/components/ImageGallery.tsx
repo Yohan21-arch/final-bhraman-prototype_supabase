@@ -35,11 +35,13 @@ export function ImageGallery({
   onSelectPlace,
   onSelectState,
   onAskYatra,
+  compact = false,
 }: {
   places?: Place[];
   onSelectPlace: (place: Place) => void;
   onSelectState: (state: StateData) => void;
   onAskYatra?: (prompt: string) => void;
+  compact?: boolean;
 }) {
   const allImages = useMemo(() => getAllGalleryImages(places), [places]);
 
@@ -102,7 +104,7 @@ export function ImageGallery({
   ];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 pb-28 pt-6 md:px-8 space-y-8">
+    <div className={cn("space-y-8", !compact ? "mx-auto max-w-7xl px-4 pb-28 pt-6 md:px-8" : "w-full pt-4")}>
       {/* Editorial Hero Header */}
       <section className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-b from-card via-card/80 to-secondary/30 p-6 md:p-10 shadow-2xl grain">
         <div className="relative z-10 max-w-3xl space-y-4">

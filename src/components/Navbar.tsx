@@ -61,7 +61,6 @@ export function Navbar({
   const navItems: NavItem[] = [
     { id: "map", label: "Map Explorer", icon: <MapIcon className="size-4" /> },
     { id: "destinations", label: "Destinations", icon: <Layers className="size-4" /> },
-    { id: "gallery", label: "Photo Gallery", icon: <Camera className="size-4" /> },
     { id: "guides", label: "Tour Guides", icon: <ShieldCheck className="size-4" /> },
     { id: "planner", label: "Trip Planner", icon: <Sparkles className="size-4" /> },
     { id: "my-list", label: "My List", icon: <Bookmark className="size-4" />, badge: count },
@@ -69,25 +68,25 @@ export function Navbar({
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/90 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 md:px-8">
+      <div className="mx-auto flex h-16 w-full max-w-[1536px] items-center justify-between gap-2 lg:gap-3 px-3 md:px-5 lg:px-6 xl:px-8">
         {/* Brand Logo */}
         <button
           onClick={() => onSelectTab("map")}
-          className="flex items-center gap-2.5 text-left group"
+          className="flex items-center gap-2.5 text-left group shrink-0"
         >
           <div className="flex size-9 items-center justify-center rounded-xl border border-primary/40 bg-primary/10 text-primary transition-all group-hover:border-primary group-hover:bg-primary/20">
             <Compass className="size-5 transition-transform group-hover:rotate-45" />
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center gap-2">
             <CyclingBrandName />
-            <span className="hidden sm:inline-block text-[9px] uppercase tracking-[0.25em] text-primary/80 font-bold ml-2">
+            <span className="hidden sm:inline-block text-[9px] uppercase tracking-[0.2em] text-primary/80 font-bold whitespace-nowrap pl-2 border-l border-border/70">
               India Curated
             </span>
           </div>
         </button>
 
         {/* Center Search Bar */}
-        <div className="hidden md:block flex-1 max-w-md mx-4">
+        <div className="hidden md:flex flex-1 lg:flex-initial w-36 lg:w-44 xl:w-56 max-w-xs mx-2 lg:mx-3 shrink-0">
           <SearchBar
             places={places}
             onSelectPlace={onSelectPlace}
@@ -96,8 +95,8 @@ export function Navbar({
         </div>
 
         {/* Desktop Nav Links & Surprise Me */}
-        <div className="hidden lg:flex items-center gap-2">
-          <nav className="flex items-center gap-1.5">
+        <div className="hidden lg:flex items-center gap-1 xl:gap-2 shrink-0 ml-auto mr-3 lg:mr-5 xl:mr-8">
+          <nav className="flex items-center gap-1 xl:gap-1.5">
             {navItems.map((item) => {
               const isActive = activeTab === item.id;
               return (
@@ -105,7 +104,7 @@ export function Navbar({
                   key={item.id}
                   onClick={() => onSelectTab(item.id)}
                   className={cn(
-                    "relative flex items-center gap-2 rounded-full px-4 py-2 text-xs uppercase tracking-[0.14em] font-semibold transition-all",
+                    "relative flex items-center gap-1.5 rounded-full px-2.5 py-1.5 xl:px-3.5 xl:py-2 text-[11px] xl:text-xs uppercase tracking-[0.1em] font-semibold transition-all shrink-0 cursor-pointer",
                     isActive
                       ? "bg-primary text-primary-foreground shadow-md"
                       : "text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -135,7 +134,7 @@ export function Navbar({
             <button
               onClick={onSurpriseMe}
               title="Open a random destination"
-              className="inline-flex items-center gap-1.5 rounded-full border border-primary/50 bg-primary/10 px-3.5 py-2 text-xs uppercase tracking-[0.14em] font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-xs active:scale-95 cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-primary/50 bg-primary/10 px-2.5 py-1.5 xl:px-3.5 xl:py-2 text-[11px] xl:text-xs uppercase tracking-[0.1em] font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-xs active:scale-95 cursor-pointer shrink-0"
             >
               <Dices className="size-3.5 transition-transform hover:rotate-180" />
               <span>Surprise Me</span>
@@ -143,7 +142,7 @@ export function Navbar({
           )}
 
           {/* User Account / Profile Menu */}
-          <div className="ml-1 pl-2 border-l border-border/60">
+          <div className="ml-1 pl-1.5 xl:pl-2 border-l border-border/60 shrink-0 pr-1">
             <ProfileMenu
               onSelectTab={onSelectTab}
               onOpenAuthModal={onOpenAuthModal || (() => {})}

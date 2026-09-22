@@ -14,6 +14,8 @@ import {
   Play,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SearchBar } from "@/components/SearchBar";
+import type { Place, StateData } from "@/types";
 
 export interface DestinationSlide {
   id: string;
@@ -146,11 +148,17 @@ export const HERO_SLIDES: DestinationSlide[] = [
 export interface HeroSlideshowProps {
   titleChildren?: React.ReactNode;
   statsChildren?: React.ReactNode;
+  places?: Place[];
+  onSelectPlace?: (place: Place) => void;
+  onSelectState?: (state: StateData) => void;
 }
 
 export function HeroSlideshow({
   titleChildren,
   statsChildren,
+  places,
+  onSelectPlace,
+  onSelectState,
 }: HeroSlideshowProps = {}) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -304,6 +312,18 @@ export function HeroSlideshow({
             <p className="text-sm md:text-base leading-relaxed text-muted-foreground max-w-2xl font-sans">
               From high-altitude Himalayan monasteries and golden desert citadels to secret tropical lagoons and thousand-year-old rock-cut sanctuaries.
             </p>
+
+            {onSelectPlace && (
+              <div className="pt-2 max-w-xl">
+                <SearchBar
+                  places={places}
+                  onSelectPlace={onSelectPlace}
+                  onSelectState={onSelectState}
+                  placeholder="Search 50+ hand-curated places, states, valleys..."
+                  className="shadow-2xl"
+                />
+              </div>
+            )}
           </>
         )}
 

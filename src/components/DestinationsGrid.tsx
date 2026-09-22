@@ -1,8 +1,10 @@
 import { useState, useMemo } from "react";
-import { Sparkles, Layers, Filter, Compass, Check, Dices, RefreshCw, AlertCircle } from "lucide-react";
+import { Sparkles, Layers, Filter, Compass, Check, Dices, RefreshCw, AlertCircle, Camera } from "lucide-react";
 import { PLACES_DATA, allTags } from "@/data/places";
 import { STATES_DATA, stateById, REGION_NAMES } from "@/data/states";
 import { PlaceCard } from "@/components/PlaceCard";
+import { ImageGallery } from "@/components/ImageGallery";
+import { getAllGalleryImages } from "@/lib/gallery";
 import type { Place, Tag, Category, Region, StateData } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +18,7 @@ export interface DestinationsGridFilters {
 export function DestinationsGrid({
   onSelectPlace,
   onSelectState,
+  onAskYatra,
   onSurpriseMe,
   filters,
   onFiltersChange,
@@ -24,9 +27,12 @@ export function DestinationsGrid({
   isLoading,
   error,
   onRetry,
+  activeSubView,
+  onSubViewChange,
 }: {
   onSelectPlace: (place: Place) => void;
   onSelectState: (state: StateData) => void;
+  onAskYatra?: (prompt: string) => void;
   onSurpriseMe?: () => void;
   filters?: DestinationsGridFilters;
   onFiltersChange?: (filters: DestinationsGridFilters) => void;
@@ -35,13 +41,23 @@ export function DestinationsGrid({
   isLoading?: boolean;
   error?: string | null;
   onRetry?: () => void;
+  activeSubView?: "cards" | "gallery";
+  onSubViewChange?: (view: "cards" | "gallery") => void;
 }) {
+  const [internalSubView, setInternalSubView] = useState<"cards" | "gallery">("cards");
   const [internalCategory, setInternalCategory] = useState<Category | "all">("all");
   const [internalRegion, setInternalRegion] = useState<Region | "all">("all");
   const [internalTag, setInternalTag] = useState<Tag | "all">("all");
   const [internalQuery, setInternalQuery] = useState("");
 
   const activePlaces = places && places.length > 0 ? places : PLACES_DATA;
+  const allGalleryImages = useMemo(() => getAllGalleryImages(activePlaces), [activePlaces]);
+
+  const currentMode = activeSubView !== undefined ? activeSubView : internalSubView;
+  const setMode = (mode: "cards" | "gallery") => {
+    setInternalSubView(mode);
+    onSubViewChange?.(mode);
+  };
 
   const category = filters ? filters.category : internalCategory;
   const selectedRegion = filters ? filters.selectedRegion : internalRegion;
@@ -103,12 +119,12 @@ export function DestinationsGrid({
 
   return (
     <main className="mx-auto max-w-7xl px-4 pb-28 pt-8 md:px-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between border-b border-border/80 pb-6">
+      {/* Top View Toggle Bar */}
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/80 pb-5">
         <div>
           <div className="flex items-center gap-2">
             <p className="eyebrow flex items-center gap-1.5 text-primary">
-              <Compass className="size-3.5" /> Comprehensive Directory
+              <Compass className="size-3.5" /> Curated Indian Atlas
             </p>
             {isLoading ? (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold text-primary">
@@ -127,15 +143,62 @@ export function DestinationsGrid({
               </span>
             )}
           </div>
-          <h1 className="display-font mt-1 text-3xl font-extrabold text-foreground sm:text-5xl">
-            All Curated Destinations
+          <h1 className="display-font mt-1 text-3xl font-extrabold text-foreground sm:text-4xl">
+            {currentMode === "gallery" ? "Destinations Photo Gallery" : "All Curated Destinations"}
           </h1>
           <p className="mt-1 text-xs md:text-sm text-muted-foreground">
-            Explore {activePlaces.length} hand-scouted historical monuments, natural wonders, and offbeat sanctuaries.
+            {currentMode === "gallery"
+              ? `Browse ${allGalleryImages.length} authentic, high-resolution photographs documenting monuments, passes, and coastal sanctuaries.`
+              : `Explore ${activePlaces.length} hand-scouted historical monuments, natural wonders, and offbeat sanctuaries.`}
           </p>
+        </div>
 
+        {/* View Mode Switcher */}
+        <div className="inline-flex shrink-0 items-center rounded-full border border-border/80 bg-secondary/60 p-1 backdrop-blur-md shadow-xs self-start sm:self-auto">
+          <button
+            type="button"
+            id="destinations-subview-cards-btn"
+            onClick={() => setMode("cards")}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer",
+              currentMode === "cards"
+                ? "bg-primary text-primary-foreground shadow-sm font-bold"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Layers className="size-3.5" />
+            <span>Cards ({activePlaces.length})</span>
+          </button>
+          <button
+            type="button"
+            id="destinations-subview-gallery-btn"
+            onClick={() => setMode("gallery")}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer",
+              currentMode === "gallery"
+                ? "bg-primary text-primary-foreground shadow-sm font-bold"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Camera className="size-3.5" />
+            <span>Photo Gallery ({allGalleryImages.length})</span>
+          </button>
+        </div>
+      </div>
+
+      {/* RENDER VIEW: Photo Gallery or Cards Directory */}
+      {currentMode === "gallery" ? (
+        <ImageGallery
+          places={activePlaces}
+          onSelectPlace={onSelectPlace}
+          onSelectState={onSelectState}
+          onAskYatra={onAskYatra}
+          compact={true}
+        />
+      ) : (
+        <>
           {error && !isUsingSupabase && (
-            <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs text-amber-700 dark:text-amber-300">
+            <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs text-amber-700 dark:text-amber-300">
               <div className="flex items-center gap-2">
                 <AlertCircle className="size-4 shrink-0 text-amber-500" />
                 <span>Operating on verified local destination backup ({error}).</span>
@@ -151,31 +214,40 @@ export function DestinationsGrid({
               )}
             </div>
           )}
-        </div>
 
-        {/* Quick Search & Surprise Me */}
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          {onSurpriseMe && (
-            <button
-              onClick={onSurpriseMe}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/50 bg-primary/10 px-4 py-2 text-xs uppercase tracking-[0.14em] font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-xs active:scale-95"
-            >
-              <Dices className="size-3.5" />
-              <span>Surprise Me</span>
-            </button>
-          )}
+          {/* Quick Search & Surprise Me Header Controls */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
+            <div className="w-full sm:w-80">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Filter destination cards..."
+                className="w-full rounded-full border border-border/80 bg-card px-4 py-2 text-xs text-foreground outline-none focus:border-primary shadow-xs"
+              />
+            </div>
 
-          <div className="w-full md:w-64">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Filter list..."
-              className="w-full rounded-full border border-border/80 bg-card px-4 py-2 text-xs text-foreground outline-none focus:border-primary"
-            />
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setMode("gallery")}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card/80 px-3.5 py-1.5 text-xs text-muted-foreground hover:border-primary hover:text-foreground transition-all cursor-pointer shadow-xs"
+              >
+                <Camera className="size-3.5 text-primary" />
+                <span>View Full Photo Gallery ({allGalleryImages.length})</span>
+              </button>
+
+              {onSurpriseMe && (
+                <button
+                  onClick={onSurpriseMe}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/50 bg-primary/10 px-3.5 py-1.5 text-xs uppercase tracking-[0.14em] font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-xs active:scale-95 cursor-pointer"
+                >
+                  <Dices className="size-3.5" />
+                  <span>Surprise Me</span>
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
 
       {/* Filter Bar */}
       <div className="mt-6 space-y-4 rounded-xl border border-border/80 bg-card/60 p-4">
@@ -313,6 +385,8 @@ export function DestinationsGrid({
           </div>
         )}
       </div>
-    </main>
+    </>
+  )}
+</main>
   );
 }

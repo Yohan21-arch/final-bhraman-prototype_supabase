@@ -56,7 +56,7 @@ export function CyclingBrandName({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "relative inline-flex items-center min-w-[5.2rem] h-7 overflow-visible",
+        "relative inline-flex items-center min-w-[6.2rem] h-7 overflow-visible shrink-0",
         className
       )}
       aria-label="Bhraman"
@@ -82,7 +82,7 @@ export function CyclingBrandName({ className }: { className?: string }) {
             ease: [0.22, 1, 0.36, 1],
           }}
           className={cn(
-            "text-xl font-bold tracking-tight text-foreground group-hover:text-primary transition-colors inline-block leading-none select-none",
+            "text-xl font-bold tracking-tight text-foreground group-hover:text-primary transition-colors inline-block leading-none select-none whitespace-nowrap",
             current.fontClass
           )}
         >

@@ -7,11 +7,13 @@ import { cn } from "@/lib/utils";
 
 export function SearchBar({
   className,
+  placeholder,
   places,
   onSelectPlace,
   onSelectState,
 }: {
   className?: string;
+  placeholder?: string;
   places?: Place[];
   onSelectPlace?: (place: Place) => void;
   onSelectState?: (state: StateData) => void;
@@ -19,14 +21,18 @@ export function SearchBar({
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
   const boxRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (query.trim()) {
-      setResults(searchAll(query, places));
+      const searchRes = searchAll(query, places);
+      setResults(searchRes);
+      setActiveIndex(searchRes.length > 0 ? 0 : -1);
     } else {
       setResults([]);
+      setActiveIndex(-1);
     }
   }, [query, places]);
 
@@ -43,6 +49,7 @@ export function SearchBar({
   const handleSelect = (result: SearchResult) => {
     setOpen(false);
     setQuery("");
+    inputRef.current?.blur();
     if (result.kind === "place" && result.place) {
       onSelectPlace?.(result.place);
     } else if (result.kind === "state" && result.state) {
@@ -51,8 +58,8 @@ export function SearchBar({
   };
 
   return (
-    <div ref={boxRef} className={cn("relative w-full", className)}>
-      <div className="group flex items-center gap-2.5 rounded-full border border-border/80 bg-card/80 px-3.5 py-2 backdrop-blur-md transition-all focus-within:border-primary/70 focus-within:bg-card focus-within:ring-1 focus-within:ring-primary/50">
+    <div ref={boxRef} className={cn("relative w-full min-w-[200px]", className)}>
+      <div className="group flex items-center gap-2.5 rounded-full border border-border/80 bg-card/80 px-3.5 py-2 backdrop-blur-md transition-all focus-within:border-primary/70 focus-within:bg-card focus-within:ring-1 focus-within:ring-primary/50 shadow-xs">
         <Search className="size-4 shrink-0 text-muted-foreground group-focus-within:text-primary transition-colors" />
         <input
           ref={inputRef}
@@ -65,25 +72,37 @@ export function SearchBar({
             if (query.trim()) setOpen(true);
           }}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && results[0]) {
-              handleSelect(results[0]);
-            }
-            if (e.key === "Escape") {
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setActiveIndex((prev) => (results.length > 0 ? (prev + 1) % results.length : -1));
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setActiveIndex((prev) => (results.length > 0 ? (prev - 1 + results.length) % results.length : -1));
+            } else if (e.key === "Enter") {
+              e.preventDefault();
+              const target = activeIndex >= 0 && results[activeIndex] ? results[activeIndex] : results[0];
+              if (target) {
+                handleSelect(target);
+              }
+            } else if (e.key === "Escape") {
               setOpen(false);
+              inputRef.current?.blur();
             }
           }}
-          placeholder="Search places, states, Himalayan valleys, temples..."
+          placeholder={placeholder || "Search places, states, Himalayan valleys, temples..."}
           aria-label="Search destinations in India"
           className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
         />
         {query && (
           <button
+            type="button"
             onClick={() => {
               setQuery("");
               setOpen(false);
               inputRef.current?.focus();
             }}
-            className="rounded-full p-0.5 text-muted-foreground hover:text-foreground"
+            className="rounded-full p-0.5 text-muted-foreground hover:text-foreground cursor-pointer"
+            aria-label="Clear search"
           >
             <X className="size-3.5" />
           </button>
@@ -91,21 +110,27 @@ export function SearchBar({
       </div>
 
       {open && query.trim() && (
-        <ul className="absolute left-0 right-0 top-full z-50 mt-2 max-h-96 overflow-y-auto rounded-xl border border-border bg-popover/95 p-1.5 shadow-2xl backdrop-blur-2xl">
+        <ul className="absolute left-0 right-0 top-full z-[100] mt-2 max-h-96 min-w-[280px] overflow-y-auto rounded-xl border border-border bg-popover/95 p-1.5 shadow-2xl backdrop-blur-2xl">
           {results.length === 0 ? (
             <li className="px-4 py-4 text-center text-sm text-muted-foreground">
               No matching destinations found for &ldquo;{query}&rdquo;.
             </li>
           ) : (
-            results.map((result) => {
+            results.map((result, idx) => {
               const isPlace = result.kind === "place";
               const state = isPlace && result.place ? stateById(result.place.state) : undefined;
+              const isSelected = idx === activeIndex;
 
               return (
                 <li key={`${result.kind}-${result.id}`}>
                   <button
+                    type="button"
                     onClick={() => handleSelect(result)}
-                    className="flex w-full items-center justify-between gap-3 rounded-lg px-3.5 py-2.5 text-left transition-colors hover:bg-secondary"
+                    onMouseEnter={() => setActiveIndex(idx)}
+                    className={cn(
+                      "flex w-full items-center justify-between gap-3 rounded-lg px-3.5 py-2.5 text-left transition-colors cursor-pointer",
+                      isSelected ? "bg-primary/10 text-primary-foreground" : "hover:bg-secondary"
+                    )}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div
@@ -129,7 +154,7 @@ export function SearchBar({
                         )}
                       </div>
                       <div className="truncate">
-                        <p className="text-sm font-medium text-foreground truncate">
+                        <p className={cn("text-sm font-medium truncate", isSelected ? "text-primary font-semibold" : "text-foreground")}>
                           {result.name}
                         </p>
                         <p className="text-[11px] text-muted-foreground truncate">

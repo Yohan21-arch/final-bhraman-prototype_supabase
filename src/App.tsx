@@ -24,9 +24,9 @@ import { StateGuide } from "@/components/StateGuide";
 import { TripListView } from "@/components/TripListView";
 import { ItineraryPlanner } from "@/components/ItineraryPlanner";
 import { DestinationsGrid, type DestinationsGridFilters } from "@/components/DestinationsGrid";
-import { ImageGallery } from "@/components/ImageGallery";
 import { TourGuidesView } from "@/components/TourGuidesView";
 import { HeroSlideshow } from "@/components/HeroSlideshow";
+import { SearchBar } from "@/components/SearchBar";
 import { PlaceCard } from "@/components/PlaceCard";
 import { YatraChatbot } from "@/components/YatraChatbot";
 import { IntroAnimationSketch } from "@/components/IntroAnimationSketch";
@@ -74,6 +74,7 @@ function BhramanApp() {
     refresh: refreshDestinations,
   } = useDestinations();
   const [activeTab, setActiveTab] = useState<NavTab>("map");
+  const [destinationSubView, setDestinationSubView] = useState<"cards" | "gallery">("cards");
   const [activePlace, setActivePlace] = useState<Place | null>(null);
   const [activeState, setActiveState] = useState<StateData | null>(null);
   const [panelStateId, setPanelStateId] = useState<string | null>(null);
@@ -143,9 +144,22 @@ function BhramanApp() {
           return;
         }
       } else if (hash.startsWith("#/tab/")) {
-        const tab = hash.replace("#/tab/", "") as NavTab;
+        const tabPart = hash.replace("#/tab/", "");
+        if (tabPart === "gallery" || tabPart === "destinations/gallery") {
+          setActiveTab("destinations");
+          setDestinationSubView("gallery");
+          setActivePlace(null);
+          setActiveState(null);
+          return;
+        }
+        const tab = tabPart as NavTab;
         if (VALID_NAV_TABS.includes(tab)) {
-          setActiveTab(tab);
+          if (tab === "gallery") {
+            setActiveTab("destinations");
+            setDestinationSubView("gallery");
+          } else {
+            setActiveTab(tab);
+          }
           setActivePlace(null);
           setActiveState(null);
           return;
@@ -201,7 +215,9 @@ function BhramanApp() {
         } else if (activeTab === "gallery") {
           label = "Back to Photo Gallery";
         } else if (activeTab === "destinations") {
-          label = gridFilters.searchQuery.trim()
+          label = destinationSubView === "gallery"
+            ? "Back to Photo Gallery"
+            : gridFilters.searchQuery.trim()
             ? `Back to Search`
             : gridFilters.category !== "all" || gridFilters.selectedRegion !== "all" || gridFilters.selectedTag !== "all"
             ? `Back to Filtered Results`
@@ -353,7 +369,9 @@ function BhramanApp() {
       : activeTab === "gallery"
       ? "Back to Photo Gallery"
       : activeTab === "destinations"
-      ? "Back to Destinations"
+      ? destinationSubView === "gallery"
+        ? "Back to Photo Gallery"
+        : "Back to Destinations"
       : activeTab === "planner"
       ? "Back to Planner"
       : activeTab === "my-list"
@@ -374,6 +392,8 @@ function BhramanApp() {
     ? `place-${activePlace.id}`
     : activeState
     ? `state-${activeState.id}`
+    : activeTab === "destinations"
+    ? `destinations-${destinationSubView}`
     : activeTab;
 
   return (
@@ -383,12 +403,21 @@ function BhramanApp() {
         places={places}
         activeTab={activeTab}
         onSelectTab={(tab) => {
-          setActiveTab(tab);
+          if (tab === "gallery") {
+            setActiveTab("destinations");
+            setDestinationSubView("gallery");
+          } else {
+            setActiveTab(tab);
+          }
           setActivePlace(null);
           setActiveState(null);
           setNavStack([]);
           try {
-            window.history.pushState({ type: "tab", tab }, "", `#/tab/${tab}`);
+            window.history.pushState(
+              { type: "tab", tab },
+              "",
+              tab === "gallery" ? "#/tab/destinations/gallery" : `#/tab/${tab}`
+            );
           } catch {
             // ignore
           }
@@ -454,23 +483,15 @@ function BhramanApp() {
             onSelectState={handleOpenFullStateGuide}
             onBack={() => setActiveTab("map")}
           />
-        ) : activeTab === "gallery" ? (
-          /* VIEW 5: Photographic Image Gallery */
-          <ImageGallery
-            places={places}
-            onSelectPlace={(place) => handleSelectPlace(place, "Back to Photo Gallery")}
-            onSelectState={handleOpenFullStateGuide}
-            onAskYatra={handleAskYatra}
-          />
         ) : activeTab === "guides" ? (
-          /* VIEW 6: Verified Tour Guides & Travel Price Ratings */
+          /* VIEW 5: Verified Tour Guides & Travel Price Ratings */
           <TourGuidesView
             places={places}
             onSelectPlace={(place) => handleSelectPlace(place, "Back to Tour Guides")}
             onAskYatra={handleAskYatra}
           />
-        ) : activeTab === "destinations" ? (
-          /* VIEW 7: All Curated Destinations Grid */
+        ) : activeTab === "destinations" || activeTab === "gallery" ? (
+          /* VIEW 6: All Curated Destinations & Integrated Photo Gallery */
           <DestinationsGrid
             places={places}
             isUsingSupabase={isUsingSupabase}
@@ -479,12 +500,28 @@ function BhramanApp() {
             onRetry={refreshDestinations}
             filters={gridFilters}
             onFiltersChange={setGridFilters}
+            activeSubView={destinationSubView}
+            onSubViewChange={(view) => {
+              setDestinationSubView(view);
+              try {
+                window.history.replaceState(
+                  null,
+                  "",
+                  view === "gallery" ? "#/tab/destinations/gallery" : "#/tab/destinations"
+                );
+              } catch {}
+            }}
+            onAskYatra={handleAskYatra}
             onSelectPlace={(place) =>
               handleSelectPlace(
                 place,
-                gridFilters.searchQuery.trim()
+                destinationSubView === "gallery"
+                  ? "Back to Photo Gallery"
+                  : gridFilters.searchQuery.trim()
                   ? "Back to Search"
-                  : gridFilters.category !== "all" || gridFilters.selectedRegion !== "all" || gridFilters.selectedTag !== "all"
+                  : gridFilters.category !== "all" ||
+                    gridFilters.selectedRegion !== "all" ||
+                    gridFilters.selectedTag !== "all"
                   ? "Back to Filtered Results"
                   : "Back to Destinations"
               )
@@ -551,13 +588,17 @@ function BhramanApp() {
           />
         ) : (
           /* VIEW 6: Home / Interactive Map Explorer */
-          <main className="mx-auto max-w-7xl px-4 pb-24 pt-6 md:px-8">
-            {/* Cinematic Destination Slideshow Hero Header */}
-            <HeroSlideshow />
+          <main className="mx-auto w-full max-w-[1536px] px-4 pb-24 pt-6 md:px-6 lg:px-8">
+            {/* Cinematic Destination Slideshow Hero Header with integrated search */}
+            <HeroSlideshow
+              places={places}
+              onSelectPlace={(place) => handleSelectPlace(place, "Back to Hero Search")}
+              onSelectState={handleOpenFullStateGuide}
+            />
 
             {/* Interactive Cartography Map Section */}
             <section className="space-y-4 mb-16">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div>
                   <p className="eyebrow flex items-center gap-1.5 text-primary">
                     <MapPin className="size-3.5" /> Interactive Explorer
@@ -567,7 +608,19 @@ function BhramanApp() {
                   </h2>
                 </div>
 
-                {/* Map Pin Category Filters (All / Hidden Gems / Iconic Wonders) */}
+                {/* Quick Map & Destination Search Bar */}
+                <div className="w-full sm:w-80 lg:w-96">
+                  <SearchBar
+                    places={places}
+                    onSelectPlace={(place) => handleSelectPlace(place, "Back to Map")}
+                    onSelectState={handleOpenFullStateGuide}
+                    placeholder="Search any destination or state on map..."
+                  />
+                </div>
+              </div>
+
+              {/* Map Pin Category Filters (All / Hidden Gems / Iconic Wonders) */}
+              <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2 flex-wrap">
                   <button
                     onClick={() => setCategoryFilter("all")}
@@ -607,10 +660,10 @@ function BhramanApp() {
                     <Flame className="size-3" />
                     <span>Iconic Wonders</span>
                   </button>
+                </div>
 
-                  <span className="hidden sm:inline-block h-4 w-px bg-border/80 my-auto" />
-
-                  {/* Quick View Options (Triggers Slide Change Animation) */}
+                {/* Quick View Options (Triggers Slide Change Animation) */}
+                <div className="flex items-center gap-2 flex-wrap">
                   <button
                     id="quick-nav-tour-guides-btn"
                     onClick={() => {
@@ -627,18 +680,18 @@ function BhramanApp() {
                   </button>
 
                   <button
-                    id="quick-nav-gallery-btn"
+                    id="quick-nav-destinations-btn"
                     onClick={() => {
-                      setActiveTab("gallery");
+                      setActiveTab("destinations");
                       try {
-                        window.history.pushState({ type: "tab", tab: "gallery" }, "", "#/tab/gallery");
+                        window.history.pushState({ type: "tab", tab: "destinations" }, "", "#/tab/destinations");
                       } catch {}
                     }}
                     className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-background/80 px-3.5 py-1.5 text-xs font-semibold text-muted-foreground hover:border-primary hover:text-foreground transition-all cursor-pointer shadow-xs active:scale-95"
-                    title="India Photographic Travel Gallery"
+                    title="All Curated Destinations & Photography"
                   >
-                    <Camera className="size-3 text-primary" />
-                    <span>Photo Gallery</span>
+                    <Layers className="size-3 text-primary" />
+                    <span>All Destinations</span>
                   </button>
                 </div>
               </div>
