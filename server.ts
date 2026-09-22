@@ -2,7 +2,6 @@ import "dotenv/config";
 import express from "express";
 import path from "path";
 import fs from "fs";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 
 const app = express();
@@ -180,8 +179,8 @@ function generateFallbackResponse(messages: Array<{ role: string; content: strin
 
 // Fallback model list ordered by speed & availability
 const FALLBACK_MODELS = [
-  "gemini-3.7-flash",
   "gemini-3.6-flash",
+  "gemini-3.8-flash",
   "gemini-flash-latest",
   "gemini-3.1-flash-lite",
 ];
@@ -236,8 +235,10 @@ async function callGeminiWithFallback(apiKey: string, contents: any[]): Promise<
   return null;
 }
 
-// API Routes
-app.post("/api/chat", async (req, res) => {
+// API Router setup (supports both /api/* and direct /* if rewritten by Vercel)
+const apiRouter = express.Router();
+
+apiRouter.post("/chat", async (req, res) => {
   try {
     const { messages } = req.body;
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -276,7 +277,7 @@ app.post("/api/chat", async (req, res) => {
 });
 
 // Endpoint to stream or download the complete 83-destination PostgreSQL migration script
-app.get("/api/supabase/migration-sql", (req, res) => {
+apiRouter.get("/supabase/migration-sql", (req, res) => {
   const filePath = path.join(process.cwd(), "supabase-destinations-migration.sql");
   if (fs.existsSync(filePath)) {
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
@@ -288,7 +289,7 @@ app.get("/api/supabase/migration-sql", (req, res) => {
 });
 
 // Server-side endpoint to migrate destinations safely using SUPABASE_SERVICE_ROLE_KEY
-app.post("/api/destinations/migrate", async (req, res) => {
+apiRouter.post("/destinations/migrate", async (req, res) => {
   try {
     const rawUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
     const supabaseUrl = rawUrl.trim().replace(/\/+$/, "").replace(/\/rest\/v1\/?$/, "");
@@ -350,7 +351,7 @@ function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: num
 }
 
 // Server-side Google Places API (New) endpoint for real nearby accommodation search
-app.all("/api/places/nearby-hotels", async (req, res) => {
+apiRouter.all("/places/nearby-hotels", async (req, res) => {
   try {
     // Support both GET query parameters and POST body
     const latVal = req.method === "POST" ? req.body?.lat : req.query?.lat;
@@ -503,9 +504,14 @@ app.all("/api/places/nearby-hotels", async (req, res) => {
   }
 });
 
+// Mount the API router on both /api (standard path) and root / (in case of rewrite)
+app.use("/api", apiRouter);
+app.use(apiRouter);
+
 async function startServer() {
-  // Vite middleware for development
+  // Vite middleware for development (lazy-loaded so Vercel serverless doesn't bundle Vite)
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -524,5 +530,13 @@ async function startServer() {
   });
 }
 
-startServer();
+// Only start the standalone HTTP listener when running as a persistent server (e.g. AI Studio / local dev),
+// NOT when imported as a serverless function on Vercel
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+export { app };
+export default app;
+
 
