@@ -47,6 +47,21 @@ export interface Place {
   featured?: boolean;
 }
 
+export interface NearbyHotel {
+  id: string;
+  name: string;
+  address?: string;
+  rating?: number;
+  userRatingCount?: number;
+  distanceKm?: number;
+  googleMapsUri?: string;
+  websiteUri?: string;
+  photoUrl?: string;
+  photoAttributions?: string[];
+  types?: string[];
+  primaryType?: string;
+}
+
 export interface StateData {
   id: string;
   name: string;

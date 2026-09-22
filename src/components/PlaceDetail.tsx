@@ -25,6 +25,7 @@ import { PlaceCard, PlaceImage } from "@/components/PlaceCard";
 import { LocalTravelTips } from "@/components/LocalTravelTips";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { PlaceTourGuideSection } from "@/components/PlaceTourGuideSection";
+import { NearbyHotelsSection } from "@/components/NearbyHotelsSection";
 import { ReviewsSection } from "@/components/ReviewsSection";
 import { getPlaceGalleryImages } from "@/lib/gallery";
 import { useTripList } from "@/lib/trip-list";
@@ -457,6 +458,12 @@ export function PlaceDetail({
 
         {/* Verified Tour Guides & Government ASI Rates Section */}
         <PlaceTourGuideSection
+          place={place}
+          onAskYatra={onAskYatra}
+        />
+
+        {/* Real Nearby Accommodations via Google Places API */}
+        <NearbyHotelsSection
           place={place}
           onAskYatra={onAskYatra}
         />
