@@ -588,7 +588,7 @@ function BhramanApp() {
           />
         ) : (
           /* VIEW 6: Home / Interactive Map Explorer */
-          <main className="mx-auto w-full max-w-[1536px] px-4 pb-24 pt-6 md:px-6 lg:px-8">
+          <main className="mx-auto w-full max-w-[1536px] px-3 xs:px-4 pb-24 pt-4 sm:pt-6 md:px-6 lg:px-8">
             {/* Cinematic Destination Slideshow Hero Header with integrated search */}
             <HeroSlideshow
               places={places}

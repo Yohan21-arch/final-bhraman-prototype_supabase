@@ -89,7 +89,7 @@ export function ProfileMenu({ onSelectTab, onOpenAuthModal }: ProfileMenuProps) 
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-56 z-50 p-1.5 rounded-2xl border border-border/80 bg-background/98 backdrop-blur-xl shadow-xl">
+        <div className="absolute right-0 top-full mt-2 w-56 max-w-[calc(100vw-24px)] z-50 p-1.5 rounded-2xl border border-border/80 bg-background/98 backdrop-blur-xl shadow-xl">
           {/* User Identity Header */}
           <div className="px-3 py-2.5">
             <div className="flex items-center justify-between">

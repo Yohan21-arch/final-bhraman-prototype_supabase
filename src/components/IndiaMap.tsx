@@ -147,9 +147,9 @@ export function IndiaMap({
       <div className="absolute inset-0 bg-[radial-gradient(rgba(212,175,55,0.08)_1px,transparent_1px)] [background-size:28px_28px] pointer-events-none" />
 
       {/* Top Left: Region Filter & Map Info Header */}
-      <div className="absolute top-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-3 pointer-events-auto">
+      <div className="absolute top-2 sm:top-4 left-2 sm:left-4 right-2 sm:right-4 z-20 flex flex-wrap items-center justify-between gap-2 sm:gap-3 pointer-events-auto">
         {/* Region Filter Chips */}
-        <div className="flex flex-wrap items-center gap-1.5 rounded-full border border-border/90 bg-background/85 p-1 backdrop-blur-xl shadow-lg">
+        <div className="flex items-center gap-1 sm:gap-1.5 rounded-2xl sm:rounded-full border border-border/90 bg-background/85 p-1 backdrop-blur-xl shadow-lg max-w-full overflow-x-auto">
           {(["all", "north", "south", "west", "east", "northeast", "central"] as const).map((r) => {
             const isSelected = selectedRegion === r;
             return (
@@ -157,7 +157,7 @@ export function IndiaMap({
                 key={r}
                 onClick={() => onSelectRegion(r)}
                 className={cn(
-                  "rounded-full px-3 py-1 text-[11px] uppercase tracking-wider font-semibold transition-all",
+                  "rounded-full px-2.5 sm:px-3 py-1 text-[10px] sm:text-[11px] uppercase tracking-wider font-semibold transition-all shrink-0 cursor-pointer",
                   isSelected
                     ? "bg-primary text-primary-foreground shadow-md font-bold"
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
@@ -170,7 +170,7 @@ export function IndiaMap({
         </div>
 
         {/* Top Right: Layer & Zoom Controls */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           {/* Toggle Labels */}
           <button
             onClick={() => setShowLabels(!showLabels)}
@@ -235,14 +235,14 @@ export function IndiaMap({
       </div>
 
       {/* Live Geographic Coordinates HUD in Bottom-Left */}
-      <div className="absolute bottom-4 left-4 z-20 pointer-events-none flex items-center gap-2 rounded-lg border border-border/80 bg-background/85 px-3 py-1.5 text-xs backdrop-blur-md shadow-lg">
+      <div className="absolute bottom-12 sm:bottom-4 left-2 sm:left-4 z-20 pointer-events-none flex items-center gap-1.5 sm:gap-2 rounded-lg border border-border/80 bg-background/85 px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs backdrop-blur-md shadow-lg">
         <Compass className="size-3.5 text-primary animate-spin-slow" />
         {mouseCoords ? (
-          <span className="font-mono text-[11px] text-foreground font-medium">
+          <span className="font-mono text-[10px] sm:text-[11px] text-foreground font-medium">
             {mouseCoords.lat.toFixed(2)}°N, {mouseCoords.lng.toFixed(2)}°E
           </span>
         ) : (
-          <span className="text-[11px] text-muted-foreground">Hover over map or click state</span>
+          <span className="text-[10px] sm:text-[11px] text-muted-foreground">Hover or tap state</span>
         )}
       </div>
 
@@ -254,7 +254,7 @@ export function IndiaMap({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.15 }}
-            className="absolute bottom-16 left-4 md:left-6 z-30 pointer-events-none rounded-xl border border-primary/40 bg-background/95 p-4 shadow-2xl backdrop-blur-xl max-w-xs"
+            className="absolute bottom-16 left-2 sm:left-4 md:left-6 right-2 sm:right-auto z-30 pointer-events-none rounded-xl border border-primary/40 bg-background/95 p-3.5 sm:p-4 shadow-2xl backdrop-blur-xl max-w-xs"
           >
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5">
@@ -302,7 +302,7 @@ export function IndiaMap({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.15 }}
-            className="absolute bottom-16 left-4 md:left-6 z-30 pointer-events-none rounded-xl border border-primary/50 bg-background/95 p-4 shadow-2xl backdrop-blur-xl max-w-sm"
+            className="absolute bottom-16 left-2 sm:left-4 md:left-6 right-2 sm:right-auto z-30 pointer-events-none rounded-xl border border-primary/50 bg-background/95 p-3.5 sm:p-4 shadow-2xl backdrop-blur-xl max-w-sm"
           >
             <div className="flex items-center gap-1.5 text-primary text-[10px] uppercase tracking-wider font-semibold">
               {hoveredPin.category === "hidden" ? (
@@ -486,13 +486,13 @@ export function IndiaMap({
       </div>
 
       {/* Bottom Floating Legend */}
-      <div className="absolute bottom-4 right-4 z-20 flex items-center gap-3 rounded-full border border-border/90 bg-background/85 px-3.5 py-1.5 text-[11px] text-muted-foreground backdrop-blur-xl shadow-md">
-        <div className="flex items-center gap-1.5">
-          <span className="size-2.5 rounded-full bg-gold inline-block shadow-sm" />
-          <span className="font-medium text-foreground">Iconic Landmarks</span>
+      <div className="absolute bottom-2 sm:bottom-4 right-2 sm:right-4 z-20 flex items-center gap-2 sm:gap-3 rounded-full border border-border/90 bg-background/85 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[10px] sm:text-[11px] text-muted-foreground backdrop-blur-xl shadow-md">
+        <div className="flex items-center gap-1 sm:gap-1.5">
+          <span className="size-2 sm:size-2.5 rounded-full bg-gold inline-block shadow-sm" />
+          <span className="font-medium text-foreground">Iconic</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="size-2.5 rounded-full bg-primary inline-block shadow-sm" />
+        <div className="flex items-center gap-1 sm:gap-1.5">
+          <span className="size-2 sm:size-2.5 rounded-full bg-primary inline-block shadow-sm" />
           <span className="font-medium text-foreground">Hidden Gems</span>
         </div>
       </div>

@@ -168,7 +168,7 @@ export function AuthModal({ isOpen, onClose, defaultMode = "signin" }: AuthModal
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -192,7 +192,7 @@ export function AuthModal({ isOpen, onClose, defaultMode = "signin" }: AuthModal
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
-            className="relative z-10 w-full sm:max-w-[440px] overflow-hidden rounded-2xl border border-border/80 bg-background/98 shadow-2xl backdrop-blur-xl"
+            className="relative z-10 w-full max-w-[calc(100vw-24px)] sm:max-w-[440px] overflow-hidden rounded-2xl border border-border/80 bg-background/98 shadow-2xl backdrop-blur-xl my-auto"
           >
             {/* Close Button */}
             <button
@@ -202,17 +202,17 @@ export function AuthModal({ isOpen, onClose, defaultMode = "signin" }: AuthModal
                 onClose();
               }}
               aria-label="Close dialog"
-              className="absolute right-4 top-4 z-20 flex size-8 items-center justify-center rounded-full bg-background/60 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+              className="absolute right-3.5 top-3.5 z-20 flex size-8 items-center justify-center rounded-full bg-background/60 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
             >
               <X className="size-4" />
             </button>
 
             {/* Top Decorative Header */}
-            <div className="relative px-6 pt-7 pb-4 bg-gradient-to-b from-primary/10 via-background/40 to-background border-b border-border/40 text-center">
+            <div className="relative px-4 sm:px-6 pt-6 sm:pt-7 pb-4 bg-gradient-to-b from-primary/10 via-background/40 to-background border-b border-border/40 text-center">
               <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/25 shadow-sm">
                 <Compass className="size-6 animate-pulse" />
               </div>
-              <h2 className="display-font text-2xl font-bold tracking-tight text-foreground">
+              <h2 className="display-font text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                 {mode === "signin" && "Welcome to Bhraman"}
                 {mode === "signup" && "Create Your Account"}
                 {mode === "forgot" && "Reset Password"}
@@ -224,7 +224,7 @@ export function AuthModal({ isOpen, onClose, defaultMode = "signin" }: AuthModal
               </p>
             </div>
 
-            <div className="p-6 pt-5 space-y-4">
+            <div className="p-4 sm:p-6 pt-4 sm:pt-5 space-y-4">
               {/* Status Alerts */}
               {errorMessage && (
                 <div className="flex items-start gap-2.5 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">

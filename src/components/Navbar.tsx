@@ -68,16 +68,16 @@ export function Navbar({
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/90 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 w-full max-w-[1536px] items-center justify-between gap-2 lg:gap-3 px-3 md:px-5 lg:px-6 xl:px-8">
+      <div className="mx-auto flex h-16 w-full max-w-[1536px] items-center justify-between gap-1.5 sm:gap-2 lg:gap-3 px-2.5 sm:px-4 md:px-5 lg:px-6 xl:px-8">
         {/* Brand Logo */}
         <button
           onClick={() => onSelectTab("map")}
-          className="flex items-center gap-2.5 text-left group shrink-0"
+          className="flex items-center gap-1.5 sm:gap-2.5 text-left group shrink-0"
         >
-          <div className="flex size-9 items-center justify-center rounded-xl border border-primary/40 bg-primary/10 text-primary transition-all group-hover:border-primary group-hover:bg-primary/20">
-            <Compass className="size-5 transition-transform group-hover:rotate-45" />
+          <div className="flex size-8 sm:size-9 items-center justify-center rounded-xl border border-primary/40 bg-primary/10 text-primary transition-all group-hover:border-primary group-hover:bg-primary/20">
+            <Compass className="size-4 sm:size-5 transition-transform group-hover:rotate-45" />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <CyclingBrandName />
             <span className="hidden sm:inline-block text-[9px] uppercase tracking-[0.2em] text-primary/80 font-bold whitespace-nowrap pl-2 border-l border-border/70">
               India Curated
@@ -151,7 +151,7 @@ export function Navbar({
         </div>
 
         {/* Mobile Action Buttons */}
-        <div className="flex items-center gap-2 lg:hidden">
+        <div className="flex items-center gap-1.5 sm:gap-2 lg:hidden shrink-0">
           {/* Mobile Profile Menu */}
           <ProfileMenu
             onSelectTab={onSelectTab}
@@ -162,18 +162,18 @@ export function Navbar({
             <button
               onClick={onSurpriseMe}
               title="Surprise Me (Random Destination)"
-              className="flex size-9 items-center justify-center rounded-full border border-primary/50 bg-primary/10 text-primary active:scale-95"
+              className="hidden sm:flex size-8 sm:size-9 items-center justify-center rounded-full border border-primary/50 bg-primary/10 text-primary active:scale-95 shrink-0"
               aria-label="Open random destination"
             >
-              <Dices className="size-4" />
+              <Dices className="size-3.5 sm:size-4" />
             </button>
           )}
           <button
             onClick={() => onSelectTab("my-list")}
-            className="relative flex size-9 items-center justify-center rounded-full border border-border bg-card text-foreground"
+            className="relative flex size-8 sm:size-9 items-center justify-center rounded-full border border-border bg-card text-foreground shrink-0"
             aria-label="My saved places"
           >
-            <Bookmark className="size-4" />
+            <Bookmark className="size-3.5 sm:size-4" />
             {count > 0 && (
               <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
                 {count}
@@ -182,17 +182,17 @@ export function Navbar({
           </button>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex size-9 items-center justify-center rounded-full border border-border bg-card text-foreground"
+            className="flex size-8 sm:size-9 items-center justify-center rounded-full border border-border bg-card text-foreground shrink-0"
             aria-label="Toggle navigation menu"
           >
-            {mobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+            {mobileMenuOpen ? <X className="size-4 sm:size-5" /> : <Menu className="size-4 sm:size-5" />}
           </button>
         </div>
       </div>
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="border-b border-border bg-background/95 p-4 backdrop-blur-2xl lg:hidden space-y-4">
+        <div className="border-b border-border bg-background/95 p-3.5 sm:p-4 backdrop-blur-2xl lg:hidden space-y-3.5 sm:space-y-4 max-w-full">
           <div className="w-full">
             <SearchBar
               places={places}

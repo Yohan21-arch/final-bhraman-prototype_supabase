@@ -58,7 +58,7 @@ export function SearchBar({
   };
 
   return (
-    <div ref={boxRef} className={cn("relative w-full min-w-[200px]", className)}>
+    <div ref={boxRef} className={cn("relative w-full min-w-0", className)}>
       <div className="group flex items-center gap-2.5 rounded-full border border-border/80 bg-card/80 px-3.5 py-2 backdrop-blur-md transition-all focus-within:border-primary/70 focus-within:bg-card focus-within:ring-1 focus-within:ring-primary/50 shadow-xs">
         <Search className="size-4 shrink-0 text-muted-foreground group-focus-within:text-primary transition-colors" />
         <input
@@ -91,7 +91,7 @@ export function SearchBar({
           }}
           placeholder={placeholder || "Search places, states, Himalayan valleys, temples..."}
           aria-label="Search destinations in India"
-          className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          className="w-full min-w-0 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
         />
         {query && (
           <button
@@ -101,7 +101,7 @@ export function SearchBar({
               setOpen(false);
               inputRef.current?.focus();
             }}
-            className="rounded-full p-0.5 text-muted-foreground hover:text-foreground cursor-pointer"
+            className="rounded-full p-0.5 text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
             aria-label="Clear search"
           >
             <X className="size-3.5" />
@@ -110,7 +110,7 @@ export function SearchBar({
       </div>
 
       {open && query.trim() && (
-        <ul className="absolute left-0 right-0 top-full z-[100] mt-2 max-h-96 min-w-[280px] overflow-y-auto rounded-xl border border-border bg-popover/95 p-1.5 shadow-2xl backdrop-blur-2xl">
+        <ul className="absolute left-0 right-0 top-full z-[100] mt-2 max-h-96 min-w-0 w-full overflow-y-auto rounded-xl border border-border bg-popover/95 p-1.5 shadow-2xl backdrop-blur-2xl">
           {results.length === 0 ? (
             <li className="px-4 py-4 text-center text-sm text-muted-foreground">
               No matching destinations found for &ldquo;{query}&rdquo;.

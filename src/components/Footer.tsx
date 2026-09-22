@@ -66,8 +66,8 @@ export function Footer({
         </div>
 
         <div className="mt-12 border-t border-border/50 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px]">
-          <p>© {new Date().getFullYear()} Bhraman. All rights reserved.</p>
-          <div className="flex items-center gap-6">
+          <p className="text-center sm:text-left">© {new Date().getFullYear()} Bhraman. All rights reserved.</p>
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-center">
             <span>India Travel Atlas</span>
             <span>Iconic & Offbeat</span>
             <span>Interactive Cartography</span>

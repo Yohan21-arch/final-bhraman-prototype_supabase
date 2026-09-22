@@ -272,7 +272,7 @@ export function YatraChatbot({
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
-            className="fixed bottom-6 right-6 z-40 flex items-center gap-3"
+            className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 flex items-center gap-3"
           >
             {/* Pulsing Hint Tooltip */}
             <motion.div
@@ -291,7 +291,7 @@ export function YatraChatbot({
               id="yatra-launcher-btn"
               onClick={() => setIsOpen(true)}
               aria-label="Open Yatra India Travel Chatbot"
-              className="group relative flex size-14 md:size-16 items-center justify-center rounded-full bg-[#F2A93B] text-[#17233D] shadow-[0_12px_35px_rgba(242,169,59,0.4)] transition-all duration-300 hover:scale-108 hover:bg-[#D98A1C] active:scale-95"
+              className="group relative flex size-12 sm:size-14 md:size-16 items-center justify-center rounded-full bg-[#F2A93B] text-[#17233D] shadow-[0_12px_35px_rgba(242,169,59,0.4)] transition-all duration-300 hover:scale-108 hover:bg-[#D98A1C] active:scale-95"
             >
               {/* Outer Golden Glow Pulse */}
               <span className="absolute inset-0 rounded-full bg-[#F2A93B] opacity-40 animate-ping pointer-events-none" />
@@ -304,7 +304,7 @@ export function YatraChatbot({
                 strokeWidth="2.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="size-7 transition-transform group-hover:rotate-6"
+                className="size-6 sm:size-7 transition-transform group-hover:rotate-6"
               >
                 <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
               </svg>
@@ -324,12 +324,12 @@ export function YatraChatbot({
             className={cn(
               "fixed z-50 flex flex-col overflow-hidden bg-[#FBF3E4] border border-[#ECDFC4] shadow-[0_25px_60px_rgba(16,26,48,0.45)] transition-all duration-300",
               isExpanded
-                ? "bottom-4 right-4 left-4 top-4 md:left-auto md:w-[540px] md:h-[calc(100vh-48px)] rounded-3xl"
-                : "bottom-4 right-4 w-[calc(100vw-32px)] sm:w-[410px] h-[610px] max-h-[calc(100vh-32px)] rounded-t-[30px] rounded-b-2xl"
+                ? "inset-2 sm:inset-4 md:inset-auto md:bottom-4 md:right-4 md:w-[540px] md:h-[calc(100vh-48px)] rounded-2xl sm:rounded-3xl"
+                : "inset-x-2 bottom-2 sm:inset-x-auto sm:right-4 sm:bottom-4 w-auto sm:w-[410px] max-w-[calc(100vw-16px)] sm:max-w-[420px] h-[580px] max-h-[calc(100dvh-16px)] rounded-t-2xl sm:rounded-t-[30px] rounded-b-xl sm:rounded-b-2xl"
             )}
           >
             {/* Header with Royal Navy & Traditional Arched Scallop Motif */}
-            <div className="relative bg-[#17233D] px-5 py-4 text-[#F7EFE1] overflow-hidden rounded-t-[30px] border-b border-[#ECDFC4]/20 shadow-md">
+            <div className="relative bg-[#17233D] px-4 sm:px-5 py-3.5 sm:py-4 text-[#F7EFE1] overflow-hidden rounded-t-2xl sm:rounded-t-[30px] border-b border-[#ECDFC4]/20 shadow-md">
               {/* Subtle Jaali / Scalloped Cartographic Pattern */}
               <div
                 className="absolute inset-0 opacity-15 pointer-events-none"

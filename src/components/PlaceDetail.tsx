@@ -124,14 +124,14 @@ export function PlaceDetail({
           onClick={onBack}
           aria-label={backLabel ? `${backLabel} (Press Esc to go back)` : "Go back to previous page (Esc)"}
           title={backLabel ? `${backLabel} (Esc)` : "Go back (Esc)"}
-          className="group inline-flex min-h-[44px] items-center gap-2 rounded-full border border-border/90 bg-card/90 px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-foreground shadow-xs transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 cursor-pointer"
+          className="group inline-flex min-h-[44px] items-center gap-1.5 sm:gap-2 rounded-full border border-border/90 bg-card/90 px-3 sm:px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] sm:tracking-[0.14em] text-foreground shadow-xs transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 cursor-pointer shrink-0"
         >
           <ArrowLeft className="size-4 shrink-0 transition-transform group-hover:-translate-x-1" />
-          <span className="truncate max-w-[140px] xs:max-w-[220px] sm:max-w-xs">{backLabel}</span>
+          <span className="truncate max-w-[90px] xs:max-w-[160px] sm:max-w-xs">{backLabel}</span>
         </button>
 
         {/* Action Controls & Top-Right Close Button */}
-        <div className="flex items-center gap-2 sm:gap-2.5">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           {onAskYatra && (
             <button
               onClick={() =>
@@ -150,24 +150,24 @@ export function PlaceDetail({
           <button
             onClick={handleShare}
             aria-label="Share destination link"
-            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-border bg-card/80 px-3.5 py-2 text-xs text-muted-foreground hover:border-primary hover:text-foreground transition-colors cursor-pointer"
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-border bg-card/80 px-2.5 sm:px-3.5 py-2 text-xs text-muted-foreground hover:border-primary hover:text-foreground transition-colors cursor-pointer shrink-0"
           >
             {copied ? <Check className="size-3.5 text-green-400" /> : <Share2 className="size-3.5" />}
-            <span className="hidden xs:inline">{copied ? "Link Copied" : "Share"}</span>
+            <span className="hidden sm:inline">{copied ? "Link Copied" : "Share"}</span>
           </button>
 
           <button
             onClick={handleBookmarkToggle}
             aria-label={isSaved ? "Remove from saved list" : "Save destination"}
             className={cn(
-              "inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-4 py-2 text-xs uppercase tracking-[0.14em] font-semibold transition-all cursor-pointer",
+              "inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-3 sm:px-4 py-2 text-xs uppercase tracking-[0.12em] sm:tracking-[0.14em] font-semibold transition-all cursor-pointer shrink-0",
               isSaved
                 ? "bg-primary text-primary-foreground shadow-md"
                 : "border border-primary/50 text-primary hover:bg-primary/10"
             )}
           >
             {isSaved ? <BookmarkCheck className="size-3.5" /> : <Bookmark className="size-3.5" />}
-            <span className="hidden xs:inline">{isSaved ? "Saved" : "Save"}</span>
+            <span className="hidden sm:inline">{isSaved ? "Saved" : "Save"}</span>
           </button>
 
           {/* Clearly Visible Top-Right Close Button (✕) */}
@@ -176,7 +176,7 @@ export function PlaceDetail({
             onClick={onClose || onBack}
             aria-label="Close destination details (Esc)"
             title="Close destination details (Esc)"
-            className="inline-flex size-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-border/90 bg-card/90 text-foreground transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 shadow-xs cursor-pointer"
+            className="inline-flex size-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-border/90 bg-card/90 text-foreground transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 shadow-xs cursor-pointer shrink-0"
           >
             <X className="size-4" />
           </button>
@@ -223,21 +223,21 @@ export function PlaceDetail({
             </span>
           </div>
 
-          <h1 className="display-font mt-3 text-4xl font-bold leading-[1.05] text-foreground sm:text-5xl md:text-6xl">
+          <h1 className="display-font mt-2 sm:mt-3 text-2xl xs:text-3xl sm:text-5xl md:text-6xl font-bold leading-[1.05] text-foreground">
             {place.name}
           </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground md:text-base">
+          <p className="mt-2 sm:mt-3 max-w-2xl text-xs sm:text-sm md:text-base leading-relaxed text-muted-foreground line-clamp-3 sm:line-clamp-none">
             {place.shortDesc}
           </p>
         </div>
 
-        <div className="absolute bottom-6 right-4 md:right-8 flex items-center gap-2 z-10">
+        <div className="absolute top-3.5 right-3.5 sm:top-auto sm:bottom-6 sm:right-8 flex items-center gap-1.5 sm:gap-2 z-10">
           <button
             onClick={() => setLightboxIndex(activeImage)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-background/80 px-3.5 py-1 text-xs font-semibold text-foreground backdrop-blur-md hover:border-primary hover:text-primary transition-all shadow-md cursor-pointer"
+            className="inline-flex items-center gap-1 sm:gap-1.5 rounded-full border border-border/80 bg-background/80 px-2.5 sm:px-3.5 py-1 text-[11px] sm:text-xs font-semibold text-foreground backdrop-blur-md hover:border-primary hover:text-primary transition-all shadow-md cursor-pointer"
           >
-            <Camera className="size-3.5 text-primary" />
-            <span>View Gallery ({place.images.length})</span>
+            <Camera className="size-3 sm:size-3.5 text-primary" />
+            <span>Gallery ({place.images.length})</span>
           </button>
 
           {place.images.length > 1 && (

@@ -46,19 +46,19 @@ export function StateGuide({
   return (
     <main className="mx-auto max-w-6xl px-4 pb-28 pt-6 md:px-8">
       {/* State Top Navigation Bar */}
-      <div className="flex items-center justify-between gap-3 mb-6">
+      <div className="flex items-center justify-between gap-2 sm:gap-3 mb-6">
         <button
           id="state-back-btn"
           onClick={onBack}
           aria-label="Back to Explorer (Esc)"
           title="Back to Explorer (Esc)"
-          className="group inline-flex min-h-[44px] items-center gap-2 rounded-full border border-border/90 bg-card/90 px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-foreground shadow-xs transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 cursor-pointer"
+          className="group inline-flex min-h-[44px] items-center gap-1.5 sm:gap-2 rounded-full border border-border/90 bg-card/90 px-3 sm:px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] sm:tracking-[0.14em] text-foreground shadow-xs transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 cursor-pointer shrink-0"
         >
           <ArrowLeft className="size-4 shrink-0 transition-transform group-hover:-translate-x-1" />
-          <span>Back to Explorer</span>
+          <span><span className="hidden xs:inline">Back to </span>Explorer</span>
         </button>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
           {onAskYatra && (
             <button
               onClick={() =>
@@ -67,7 +67,7 @@ export function StateGuide({
                 )
               }
               aria-label={`Ask Yatra About ${state.name}`}
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-[#F2A93B]/50 bg-[#17233D] px-4 py-2 text-xs font-semibold text-[#F2A93B] hover:bg-[#101A30] transition-all shadow-xs"
+              className="inline-flex min-h-[44px] items-center gap-1.5 sm:gap-2 rounded-full border border-[#F2A93B]/50 bg-[#17233D] px-3 sm:px-4 py-2 text-xs font-semibold text-[#F2A93B] hover:bg-[#101A30] transition-all shadow-xs shrink-0"
             >
               <Sparkles className="size-3.5 text-[#F2A93B]" />
               <span className="hidden sm:inline">Ask Yatra About {state.name}</span>
@@ -80,7 +80,7 @@ export function StateGuide({
             onClick={onClose || onBack}
             aria-label="Close state guide (Esc)"
             title="Close state guide (Esc)"
-            className="inline-flex size-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-border/90 bg-card/90 text-foreground transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 shadow-xs cursor-pointer"
+            className="inline-flex size-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-border/90 bg-card/90 text-foreground transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 shadow-xs cursor-pointer shrink-0"
           >
             <X className="size-4" />
           </button>
@@ -88,14 +88,14 @@ export function StateGuide({
       </div>
 
       {/* State Header Card */}
-      <header className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card via-card/80 to-secondary/30 p-6 md:p-10 shadow-xl">
+      <header className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card via-card/80 to-secondary/30 p-4 sm:p-6 md:p-10 shadow-xl">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="space-y-3 max-w-2xl">
             <p className="eyebrow flex items-center gap-1.5 text-primary">
               <Compass className="size-3.5" />
               {REGION_NAMES[state.region]}
             </p>
-            <h1 className="display-font text-4xl font-extrabold text-foreground md:text-6xl">
+            <h1 className="display-font text-2xl xs:text-3xl sm:text-5xl md:text-6xl font-extrabold text-foreground">
               {state.name}
             </h1>
             <p className="text-sm leading-relaxed text-muted-foreground md:text-base">

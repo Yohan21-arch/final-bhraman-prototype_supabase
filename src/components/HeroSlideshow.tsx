@@ -229,7 +229,7 @@ export function HeroSlideshow({
   return (
     <section
       ref={containerRef}
-      className="relative overflow-hidden rounded-3xl border border-border/80 p-6 md:p-12 mb-8 shadow-2xl transition-all select-none"
+      className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-border/80 p-4 sm:p-6 md:p-12 mb-8 shadow-2xl transition-all select-none"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       role="region"
@@ -305,11 +305,11 @@ export function HeroSlideshow({
               <span>Cinematic India Travel Atlas</span>
             </div>
 
-            <h1 className="display-font text-4xl font-extrabold tracking-tight text-foreground sm:text-6xl lg:text-7xl leading-[0.98]">
+            <h1 className="display-font text-2xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-foreground leading-[1.05] sm:leading-[0.98]">
               Discover the Soul of India
             </h1>
 
-            <p className="text-sm md:text-base leading-relaxed text-muted-foreground max-w-2xl font-sans">
+            <p className="text-xs sm:text-sm md:text-base leading-relaxed text-muted-foreground max-w-2xl font-sans">
               From high-altitude Himalayan monasteries and golden desert citadels to secret tropical lagoons and thousand-year-old rock-cut sanctuaries.
             </p>
 

@@ -85,7 +85,7 @@ export function StatePanel({
         className="fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-border bg-background/95 shadow-2xl backdrop-blur-2xl md:w-[480px] lg:w-[520px] max-w-full"
         aria-label={`Places in ${state.name}`}
       >
-        <header className="space-y-4 border-b border-border p-5 md:p-6 bg-card/75 backdrop-blur-md">
+        <header className="space-y-3.5 border-b border-border p-4 sm:p-5 md:p-6 bg-card/75 backdrop-blur-md">
           {/* Top navigation row with Back and Prominent Top-Right ✕ Close Button */}
           <div className="flex items-center justify-between gap-3">
             <button
@@ -93,7 +93,7 @@ export function StatePanel({
               onClick={onClose}
               aria-label="Back to Map (Esc)"
               title="Back to Map (Esc)"
-              className="group inline-flex min-h-[44px] items-center gap-2 rounded-full border border-border/80 bg-secondary/60 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.14em] text-foreground transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 cursor-pointer"
+              className="group inline-flex min-h-[44px] items-center gap-1.5 sm:gap-2 rounded-full border border-border/80 bg-secondary/60 px-3 sm:px-3.5 py-2 text-xs font-bold uppercase tracking-[0.12em] sm:tracking-[0.14em] text-foreground transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 cursor-pointer"
             >
               <ArrowLeft className="size-4 shrink-0 transition-transform group-hover:-translate-x-1" />
               <span>Back to Map</span>
@@ -105,17 +105,17 @@ export function StatePanel({
               onClick={onClose}
               aria-label={`Close ${state.name} information (Esc)`}
               title="Close sidebar (Esc)"
-              className="inline-flex size-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-border/90 bg-card/90 text-foreground shadow-xs transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 cursor-pointer"
+              className="inline-flex size-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-border/90 bg-card/90 text-foreground shadow-xs transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 cursor-pointer shrink-0"
             >
               <X className="size-4.5" />
             </button>
           </div>
 
-          <div className="flex items-start gap-4">
-            <div className="relative size-14 shrink-0 rounded-lg border border-border/80 bg-secondary/50 p-1 flex items-center justify-center">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <div className="relative size-12 sm:size-14 shrink-0 rounded-lg border border-border/80 bg-secondary/50 p-1 flex items-center justify-center">
               <svg
                 viewBox={`${state.bbox[0] - 8} ${state.bbox[1] - 8} ${state.bbox[2] + 16} ${state.bbox[3] + 16}`}
-                className="size-12"
+                className="size-10 sm:size-12"
                 aria-hidden="true"
                 width={MAP_WIDTH}
                 height={MAP_HEIGHT}
@@ -128,20 +128,20 @@ export function StatePanel({
               </svg>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="eyebrow flex items-center gap-1.5 text-primary font-semibold">
-                <Compass className="size-3 text-primary" />
-                {REGION_NAMES[state.region]}
+              <p className="eyebrow flex items-center gap-1.5 text-primary font-semibold text-[11px] sm:text-xs">
+                <Compass className="size-3 text-primary shrink-0" />
+                <span className="truncate">{REGION_NAMES[state.region]}</span>
               </p>
-              <h2 className="display-font mt-1 text-2xl font-bold leading-none text-foreground truncate">
+              <h2 className="display-font mt-0.5 sm:mt-1 text-xl sm:text-2xl font-bold leading-tight text-foreground truncate">
                 {state.name}
               </h2>
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                Capital: <span className="text-foreground/90">{state.capital}</span> · {allPlaces.length} curated destinations
+              <p className="mt-1 text-[11px] sm:text-xs text-muted-foreground truncate">
+                Capital: <span className="text-foreground/90">{state.capital}</span> · {allPlaces.length} places
               </p>
             </div>
           </div>
 
-          <p className="text-xs leading-relaxed text-muted-foreground font-sans">
+          <p className="text-xs leading-relaxed text-muted-foreground font-sans line-clamp-3 sm:line-clamp-none">
             {state.description}
           </p>
 
@@ -158,17 +158,17 @@ export function StatePanel({
                     setActiveTags([]);
                   }}
                   className={cn(
-                    "flex min-h-[38px] items-center justify-center gap-2 rounded-md py-2 text-xs uppercase tracking-[0.14em] font-medium transition-all cursor-pointer",
+                    "flex min-h-[38px] items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] sm:text-xs uppercase tracking-[0.08em] sm:tracking-[0.14em] font-medium transition-all cursor-pointer",
                     isTab
                       ? "bg-primary text-primary-foreground shadow-md font-semibold"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
                   )}
                 >
-                  {key === "hidden" && <Sparkles className="size-3.5" />}
-                  <span>{key === "iconic" ? "Iconic Wonders" : "Hidden Gems"}</span>
+                  {key === "hidden" && <Sparkles className="size-3 sm:size-3.5 shrink-0" />}
+                  <span className="truncate">{key === "iconic" ? "Iconic" : "Hidden Gems"}</span>
                   <span
                     className={cn(
-                      "ml-1 rounded-full px-1.5 py-0.2 text-[10px]",
+                      "ml-0.5 rounded-full px-1.5 py-0.2 text-[10px] shrink-0",
                       isTab ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
                     )}
                   >
@@ -216,7 +216,7 @@ export function StatePanel({
         </header>
 
         {/* Place list */}
-        <div className="flex-1 space-y-4 overflow-y-auto p-5 md:p-6">
+        <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-5 md:p-6">
           {visiblePlaces.length > 0 ? (
             visiblePlaces.map((place) => (
               <PlaceCard

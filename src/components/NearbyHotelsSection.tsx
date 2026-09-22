@@ -120,10 +120,10 @@ export function NearbyHotelsSection({ place, onAskYatra }: NearbyHotelsSectionPr
     <section
       id="nearby-hotels-section"
       aria-label={`Nearby Hotels for ${place.name}`}
-      className="space-y-6 rounded-2xl border border-border/70 bg-card/60 p-6 md:p-8 shadow-md transition-all"
+      className="space-y-6 rounded-2xl border border-border/70 bg-card/60 p-4 sm:p-6 md:p-8 shadow-md transition-all"
     >
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 border-b border-border/60 pb-4 sm:pb-5">
         <div>
           <p className="eyebrow flex items-center gap-1.5 text-primary font-semibold">
             <Building2 className="size-3.5" /> Verified Local Accommodations

@@ -56,7 +56,7 @@ export function CyclingBrandName({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "relative inline-flex items-center min-w-[6.2rem] h-7 overflow-visible shrink-0",
+        "relative inline-flex items-center min-w-[4.8rem] sm:min-w-[6.2rem] h-7 overflow-visible shrink-0",
         className
       )}
       aria-label="Bhraman"
