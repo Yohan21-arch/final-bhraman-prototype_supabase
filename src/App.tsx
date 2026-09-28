@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
 import {
   Compass,
   Sparkles,
@@ -26,6 +26,7 @@ import { ItineraryPlanner } from "@/components/ItineraryPlanner";
 import { DestinationsGrid, type DestinationsGridFilters } from "@/components/DestinationsGrid";
 import { TourGuidesView } from "@/components/TourGuidesView";
 import { HeroSlideshow } from "@/components/HeroSlideshow";
+import { ExperienceCollections } from "@/components/ExperienceCollections";
 import { SearchBar } from "@/components/SearchBar";
 import { PlaceCard } from "@/components/PlaceCard";
 import { YatraChatbot } from "@/components/YatraChatbot";
@@ -66,6 +67,7 @@ const VALID_NAV_TABS: NavTab[] = [
 ];
 
 function BhramanApp() {
+  const reduceMotion = useReducedMotion();
   const {
     places,
     loading: isPlacesLoading,
@@ -80,7 +82,7 @@ function BhramanApp() {
   const [panelStateId, setPanelStateId] = useState<string | null>(null);
   const [chatInitialPrompt, setChatInitialPrompt] = useState<string | null>(null);
   const [navStack, setNavStack] = useState<NavContextEntry[]>([]);
-  const [showIntro, setShowIntro] = useState(true);
+  const [showIntro, setShowIntro] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
   const handleIntroFinished = useCallback(() => {
@@ -99,7 +101,7 @@ function BhramanApp() {
     searchQuery: "",
   });
 
-  const featured = useMemo(() => places.filter((p) => p.featured), [places]);
+  const featured = useMemo(() => places.filter((p) => p.featured).slice(0, 8), [places]);
 
   // Synchronize initial URL hash on mount
   useEffect(() => {
@@ -200,8 +202,8 @@ function BhramanApp() {
 
   // Scroll to top on view changes
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [activeTab, activePlace?.id, activeState?.id]);
+    window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+  }, [activeTab, activePlace?.id, activeState?.id, reduceMotion]);
 
   const handleSelectPlace = useCallback(
     (place: Place, customOriginLabel?: string) => {
@@ -360,6 +362,20 @@ function BhramanApp() {
     setChatInitialPrompt(prompt);
   };
 
+  const handleSelectTab = (tab: NavTab) => {
+    const gallery = tab === "gallery";
+    setActiveTab(gallery ? "destinations" : tab);
+    if (gallery) setDestinationSubView("gallery");
+    setActivePlace(null);
+    setActiveState(null);
+    setPanelStateId(null);
+    setNavStack([]);
+    window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+    try {
+      window.history.pushState({ type: "tab", tab }, "", gallery ? "#/tab/destinations/gallery" : `#/tab/${tab}`);
+    } catch { /* Navigation still works when browser history is unavailable. */ }
+  };
+
   // Determine current contextual back label
   const currentBackLabel =
     navStack.length > 0
@@ -402,26 +418,7 @@ function BhramanApp() {
       <Navbar
         places={places}
         activeTab={activeTab}
-        onSelectTab={(tab) => {
-          if (tab === "gallery") {
-            setActiveTab("destinations");
-            setDestinationSubView("gallery");
-          } else {
-            setActiveTab(tab);
-          }
-          setActivePlace(null);
-          setActiveState(null);
-          setNavStack([]);
-          try {
-            window.history.pushState(
-              { type: "tab", tab },
-              "",
-              tab === "gallery" ? "#/tab/destinations/gallery" : `#/tab/${tab}`
-            );
-          } catch {
-            // ignore
-          }
-        }}
+        onSelectTab={handleSelectTab}
         onSelectPlace={(place) => handleSelectPlace(place, "Back to Search")}
         onSelectState={handleOpenFullStateGuide}
         onSurpriseMe={handleSurpriseMe}
@@ -429,19 +426,14 @@ function BhramanApp() {
       />
 
       {/* Main Dynamic View Switching with Slide Change Animation */}
-      <div className="flex-1 overflow-x-hidden">
+      <div id="main-content" tabIndex={-1} className="flex-1 min-w-0">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeViewKey}
-            initial={{ opacity: 0, scale: 0.96, x: -40 }}
-            animate={{ opacity: 1, scale: 1, x: 0 }}
-            exit={{
-              opacity: 0,
-              scale: 0.92,
-              x: 90,
-              transition: { duration: 0.28, ease: [0.32, 0.72, 0, 1] },
-            }}
-            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.12 } }}
+            transition={{ duration: reduceMotion ? 0 : 0.22, ease: "easeOut" }}
             className="w-full"
           >
             {/* VIEW 1: Immersive Place Detail */}
@@ -588,24 +580,36 @@ function BhramanApp() {
           />
         ) : (
           /* VIEW 6: Home / Interactive Map Explorer */
-          <main className="mx-auto w-full max-w-[1536px] px-3 xs:px-4 pb-24 pt-4 sm:pt-6 md:px-6 lg:px-8">
+          <main className="site-container pb-20 pt-4 sm:pt-6">
             {/* Cinematic Destination Slideshow Hero Header with integrated search */}
             <HeroSlideshow
               places={places}
-              onSelectPlace={(place) => handleSelectPlace(place, "Back to Hero Search")}
+              onSelectPlace={(place) => handleSelectPlace(place, "Back to Discover India")}
               onSelectState={handleOpenFullStateGuide}
+              onExplore={() => {
+                const explorer = document.getElementById("india-explorer");
+                explorer?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+                explorer?.focus({ preventScroll: true });
+              }}
+              onAskYatra={() => handleAskYatra("Help me discover India. Ask me about my interests and suggest a place to begin.")}
+              onReplayIntro={() => setShowIntro(true)}
             />
 
+            <ExperienceCollections places={places} onExplore={({ tag, category }) => {
+              setGridFilters({ category: category || "all", selectedRegion: "all", selectedTag: tag || "all", searchQuery: "" });
+              setDestinationSubView("cards");
+              handleSelectTab("destinations");
+            }} />
+
             {/* Interactive Cartography Map Section */}
-            <section className="space-y-4 mb-16">
+            <section id="india-explorer" tabIndex={-1} aria-labelledby="explorer-heading" className="home-section space-y-5">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div>
                   <p className="eyebrow flex items-center gap-1.5 text-primary">
                     <MapPin className="size-3.5" /> Interactive Explorer
                   </p>
-                  <h2 className="display-font text-2xl md:text-3xl font-extrabold text-foreground">
-                    Tap Any State to Reveal Curated Places
-                  </h2>
+                  <h2 id="explorer-heading" className="section-heading mt-3">A country of endless possibilities.</h2>
+                  <p className="section-copy">Choose a state. Find its landmarks, local stories, and lesser-known places.</p>
                 </div>
 
                 {/* Quick Map & Destination Search Bar */}
@@ -711,19 +715,17 @@ function BhramanApp() {
             </section>
 
             {/* Featured Wonders Carousel / Grid */}
-            <section className="space-y-6">
-              <div className="flex items-center justify-between border-b border-border/70 pb-3">
+            <section className="home-section space-y-7" aria-labelledby="highlights-heading">
+              <div className="flex flex-wrap items-end justify-between gap-4 pb-3">
                 <div>
                   <p className="eyebrow flex items-center gap-1.5 text-primary">
                     <Sparkles className="size-3.5" /> Curators&apos; Pick
                   </p>
-                  <h2 className="display-font text-2xl md:text-3xl font-extrabold text-foreground">
-                    Unmissable Highlights of India
-                  </h2>
+                  <h2 id="highlights-heading" className="section-heading mt-3">Some places stay with you.</h2>
                 </div>
                 <button
-                  onClick={() => setActiveTab("destinations")}
-                  className="group inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.14em] text-primary font-semibold hover:underline cursor-pointer"
+                  onClick={() => handleSelectTab("destinations")}
+                  className="brand-button brand-button-secondary group"
                 >
                   <span>View All ({places.length})</span>
                   <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
@@ -738,6 +740,19 @@ function BhramanApp() {
                     onSelect={(p) => handleSelectPlace(p, "Back to Highlights")}
                   />
                 ))}
+              </div>
+            </section>
+
+            <section className="journey-panel home-section grid gap-8 lg:grid-cols-[1.3fr_1fr] lg:items-center" aria-labelledby="journey-heading">
+              <div>
+                <p className="eyebrow mb-3 text-primary">From inspiration to itinerary</p>
+                <h2 id="journey-heading" className="section-heading">Make it your journey.</h2>
+                <p className="section-copy">Save the places that move you, build a trip around your interests, or let Yatra help you find a starting point.</p>
+              </div>
+              <div className="flex flex-col gap-3 sm:items-start lg:items-end">
+                <button onClick={() => handleSelectTab("planner")} className="brand-button brand-button-primary"><Compass className="size-4" /> Plan a trip <ArrowRight className="size-4" /></button>
+                <button onClick={() => handleAskYatra("Help me plan a trip to India based on my interests and the time I have available.")} className="brand-button brand-button-secondary"><Sparkles className="size-4 text-primary" /> Find inspiration with Yatra</button>
+                <button onClick={() => handleSelectTab("guides")} className="min-h-11 text-sm text-muted-foreground underline underline-offset-4 hover:text-primary">Explore local tour guides</button>
               </div>
             </section>
           </main>
@@ -789,8 +804,11 @@ function BhramanApp() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BhramanApp />
-    </AuthProvider>
+    <MotionConfig reducedMotion="user">
+      <AuthProvider>
+        <BhramanApp />
+      </AuthProvider>
+    </MotionConfig>
   );
 }
+

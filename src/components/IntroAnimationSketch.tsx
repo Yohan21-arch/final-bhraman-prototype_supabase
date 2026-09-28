@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   motion,
   useMotionValue,
@@ -57,6 +57,7 @@ export interface IntroAnimationSketchProps {
 }
 
 export function IntroAnimationSketch({ onFinished }: IntroAnimationSketchProps) {
+  const skipRef = useRef<HTMLButtonElement>(null);
   const shouldReduceMotion = useReducedMotion();
   const [stage, setStage] = useState<"sketch" | "dissolve" | "title" | "exit">("sketch");
   const [showArchAccent, setShowArchAccent] = useState(false);
@@ -82,10 +83,10 @@ export function IntroAnimationSketch({ onFinished }: IntroAnimationSketchProps) 
       }
 
       // 1. Sketch the Taj Mahal outline in.
-      await animate(drawProgress, 1, { duration: 1.8, ease: [0.65, 0, 0.35, 1] });
+      await animate(drawProgress, 1, { duration: 0.8, ease: [0.65, 0, 0.35, 1] });
       if (cancelled) return;
       setShowArchAccent(true);
-      await wait(550);
+      await wait(150);
       if (cancelled) return;
       setShowArchAccent(false);
 
@@ -93,33 +94,33 @@ export function IntroAnimationSketch({ onFinished }: IntroAnimationSketchProps) 
       const tajToFort = interpolate(TAJ_MAHAL_PATH, RED_FORT_PATH, { maxSegmentLength: 2 });
       morphT.set(0);
       await animate(morphT, 1, {
-        duration: 1.5,
+        duration: 0.6,
         ease: [0.65, 0, 0.35, 1],
         onUpdate: (t) => dValue.set(tajToFort(t)),
       });
       if (cancelled) return;
-      await wait(500);
+      await wait(150);
 
       // 3. Morph Red Fort -> Qutub Minar.
       const fortToMinar = interpolate(RED_FORT_PATH, QUTUB_MINAR_PATH, { maxSegmentLength: 2 });
       morphT.set(0);
       await animate(morphT, 1, {
-        duration: 1.5,
+        duration: 0.6,
         ease: [0.65, 0, 0.35, 1],
         onUpdate: (t) => dValue.set(fortToMinar(t)),
       });
       if (cancelled) return;
-      await wait(600);
+      await wait(150);
 
       // 4. Dissolve the sketch outward, then reveal the title.
       setStage("dissolve");
-      await wait(700);
+      await wait(350);
       if (cancelled) return;
       setStage("title");
-      await wait(1700);
+      await wait(650);
       if (cancelled) return;
       setStage("exit");
-      await wait(700);
+      await wait(350);
       if (!cancelled) setVisible(false);
     };
 
@@ -140,13 +141,22 @@ export function IntroAnimationSketch({ onFinished }: IntroAnimationSketchProps) 
   };
 
   useEffect(() => {
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    skipRef.current?.focus();
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Tab") { e.preventDefault(); skipRef.current?.focus(); }
       if (e.key === "Escape") {
         skip();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
   }, []);
 
   if (!visible) return null;
@@ -161,16 +171,19 @@ export function IntroAnimationSketch({ onFinished }: IntroAnimationSketchProps) 
       style={{
         background: "radial-gradient(120% 100% at 50% 40%, #1a1a1a 0%, #000000 70%)",
       }}
-      aria-hidden="true"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Bhraman introduction"
     >
       {/* Top right skip button / prompt */}
       <div className="absolute top-6 right-6 z-30 flex items-center gap-2">
         <button
+          ref={skipRef}
           onClick={(e) => {
             e.stopPropagation();
             skip();
           }}
-          className="rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs text-white/70 hover:text-white hover:bg-white/20 transition-all font-mono"
+          className="min-h-11 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs text-white/70 hover:text-white hover:bg-white/20 transition-all font-mono"
         >
           Skip Intro ✕
         </button>
@@ -245,3 +258,4 @@ export function IntroAnimationSketch({ onFinished }: IntroAnimationSketchProps) 
     </motion.div>
   );
 }
+

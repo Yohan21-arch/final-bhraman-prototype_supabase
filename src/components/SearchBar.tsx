@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Search, X, MapPin, Landmark, Sparkles } from "lucide-react";
 import { searchAll } from "@/lib/search";
 import { stateById } from "@/data/states";
@@ -18,6 +18,7 @@ export function SearchBar({
   onSelectPlace?: (place: Place) => void;
   onSelectState?: (state: StateData) => void;
 }) {
+  const listId = useId();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -46,6 +47,12 @@ export function SearchBar({
     return () => document.removeEventListener("mousedown", onDown);
   }, []);
 
+  useEffect(() => {
+    if (open && activeIndex >= 0) {
+      document.getElementById(listId + "-" + activeIndex)?.scrollIntoView({ block: "nearest" });
+    }
+  }, [activeIndex, open, listId]);
+
   const handleSelect = (result: SearchResult) => {
     setOpen(false);
     setQuery("");
@@ -58,11 +65,16 @@ export function SearchBar({
   };
 
   return (
-    <div ref={boxRef} className={cn("relative w-full min-w-0", className)}>
-      <div className="group flex items-center gap-2.5 rounded-full border border-border/80 bg-card/80 px-3.5 py-2 backdrop-blur-md transition-all focus-within:border-primary/70 focus-within:bg-card focus-within:ring-1 focus-within:ring-primary/50 shadow-xs">
+    <div ref={boxRef} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false); }} className={cn("relative w-full min-w-0", className)}>
+      <div className="group flex items-center gap-2.5 min-h-11 rounded-full border border-border/80 bg-background/60 px-4 py-2.5 backdrop-blur-md transition-all focus-within:border-primary/70 focus-within:bg-card focus-within:ring-1 focus-within:ring-primary/50 shadow-xs">
         <Search className="size-4 shrink-0 text-muted-foreground group-focus-within:text-primary transition-colors" />
         <input
           ref={inputRef}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={open && !!query.trim()}
+          aria-controls={listId}
+          aria-activedescendant={open && activeIndex >= 0 ? listId + "-" + activeIndex : undefined}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -74,11 +86,12 @@ export function SearchBar({
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") {
               e.preventDefault();
+              if (query.trim()) setOpen(true);
               setActiveIndex((prev) => (results.length > 0 ? (prev + 1) % results.length : -1));
             } else if (e.key === "ArrowUp") {
               e.preventDefault();
               setActiveIndex((prev) => (results.length > 0 ? (prev - 1 + results.length) % results.length : -1));
-            } else if (e.key === "Enter") {
+            } else if (e.key === "Enter" && open) {
               e.preventDefault();
               const target = activeIndex >= 0 && results[activeIndex] ? results[activeIndex] : results[0];
               if (target) {
@@ -110,9 +123,9 @@ export function SearchBar({
       </div>
 
       {open && query.trim() && (
-        <ul className="absolute left-0 right-0 top-full z-[100] mt-2 max-h-96 min-w-0 w-full overflow-y-auto rounded-xl border border-border bg-popover/95 p-1.5 shadow-2xl backdrop-blur-2xl">
+        <ul id={listId} role="listbox" aria-label="Matching destinations and states" className="absolute right-0 top-full z-[100] mt-2 max-h-[min(24rem,50dvh)] w-full overflow-y-auto overscroll-contain rounded-xl border border-border bg-popover p-1.5 shadow-2xl sm:min-w-80">
           {results.length === 0 ? (
-            <li className="px-4 py-4 text-center text-sm text-muted-foreground">
+            <li role="option" aria-disabled="true" aria-selected="false" className="px-4 py-4 text-center text-sm text-muted-foreground">
               No matching destinations found for &ldquo;{query}&rdquo;.
             </li>
           ) : (
@@ -122,14 +135,16 @@ export function SearchBar({
               const isSelected = idx === activeIndex;
 
               return (
-                <li key={`${result.kind}-${result.id}`}>
+                <li key={`${result.kind}-${result.id}`} id={listId + "-" + idx} role="option" aria-selected={isSelected}>
                   <button
                     type="button"
+                    tabIndex={-1}
+                    onMouseDown={(event) => event.preventDefault()}
                     onClick={() => handleSelect(result)}
                     onMouseEnter={() => setActiveIndex(idx)}
                     className={cn(
-                      "flex w-full items-center justify-between gap-3 rounded-lg px-3.5 py-2.5 text-left transition-colors cursor-pointer",
-                      isSelected ? "bg-primary/10 text-primary-foreground" : "hover:bg-secondary"
+                      "flex min-h-14 w-full items-center justify-between gap-3 rounded-lg px-3.5 py-2.5 text-left transition-colors cursor-pointer",
+                      isSelected ? "bg-primary/10 text-foreground" : "hover:bg-secondary"
                     )}
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -179,3 +194,4 @@ export function SearchBar({
     </div>
   );
 }
+

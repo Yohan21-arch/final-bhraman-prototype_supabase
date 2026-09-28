@@ -46,7 +46,7 @@ export function CyclingBrandName({ className }: { className?: string }) {
 
     const interval = setInterval(() => {
       setIndex((prev) => (prev + 1) % BRAND_LANGUAGES.length);
-    }, 2600);
+    }, 6500);
 
     return () => clearInterval(interval);
   }, [shouldReduceMotion]);
@@ -69,7 +69,7 @@ export function CyclingBrandName({ className }: { className?: string }) {
           initial={
             shouldReduceMotion
               ? { opacity: 1 }
-              : { opacity: 0, y: 3, filter: "blur(2px)" }
+              : { opacity: 0, y: 3, filter: "blur(0px)" }
           }
           animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
           exit={
@@ -78,7 +78,7 @@ export function CyclingBrandName({ className }: { className?: string }) {
               : { opacity: 0, y: -3, filter: "blur(2px)" }
           }
           transition={{
-            duration: shouldReduceMotion ? 0 : 0.45,
+            duration: shouldReduceMotion ? 0 : 0.25,
             ease: [0.22, 1, 0.36, 1],
           }}
           className={cn(
@@ -92,3 +92,4 @@ export function CyclingBrandName({ className }: { className?: string }) {
     </div>
   );
 }
+
