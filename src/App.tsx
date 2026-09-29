@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
 import {
   Compass,
@@ -17,8 +17,9 @@ import {
 } from "lucide-react";
 import { Navbar, type NavTab } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { IndiaMap } from "@/components/IndiaMap";
-import { StatePanel } from "@/components/StatePanel";
+import { ExplorerShell } from "@/components/ExplorerShell";
+import { DEFAULT_MAP_VIEW, fitState, type MapViewState } from "@/lib/map-camera";
+import { DEFAULT_PANEL_VIEW, type PanelViewState } from "@/components/StatePanel";
 import { PlaceDetail } from "@/components/PlaceDetail";
 import { StateGuide } from "@/components/StateGuide";
 import { TripListView } from "@/components/TripListView";
@@ -39,7 +40,7 @@ import { MyTripsView } from "@/components/account/MyTripsView";
 import { BookingHistoryView } from "@/components/account/BookingHistoryView";
 import { SettingsView } from "@/components/account/SettingsView";
 import { PLACES_DATA } from "@/data/places";
-import { STATES_DATA, stateById } from "@/data/states";
+import { STATES_DATA, stateById, MAP_WIDTH, MAP_HEIGHT } from "@/data/states";
 import { useDestinations } from "@/services/destinationService";
 import type { Place, StateData, Region, Category } from "@/types";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,9 @@ interface NavContextEntry {
   state: StateData | null;
   panelStateId: string | null;
   label: string;
+  scrollY: number; focusId: string; mapView: MapViewState; panelView: PanelViewState;
+  selectedRegion: Region | "all"; categoryFilter: "all" | "iconic" | "hidden";
+  gridFilters: DestinationsGridFilters; destinationSubView: "cards" | "gallery";
 }
 
 const VALID_NAV_TABS: NavTab[] = [
@@ -82,7 +86,7 @@ function BhramanApp() {
   const [panelStateId, setPanelStateId] = useState<string | null>(null);
   const [chatInitialPrompt, setChatInitialPrompt] = useState<string | null>(null);
   const [navStack, setNavStack] = useState<NavContextEntry[]>([]);
-  const [showIntro, setShowIntro] = useState(false);
+  const [showIntro, setShowIntro] = useState(true);
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
   const handleIntroFinished = useCallback(() => {
@@ -101,252 +105,134 @@ function BhramanApp() {
     searchQuery: "",
   });
 
+  const [mapView, setMapView] = useState<MapViewState>(DEFAULT_MAP_VIEW);
+  const [panelView, setPanelView] = useState<PanelViewState>(DEFAULT_PANEL_VIEW);
+  const pendingRestore = useRef<{ scrollY: number; focusId: string } | null>(null);
+  const initialRoute = useRef(false);
+  const finishedView = useRef("");
+  const captureContext = (label = "Back to Map"): NavContextEntry => ({
+    tab: activeTab, place: activePlace, state: activeState, panelStateId, label,
+    scrollY: window.scrollY, focusId: document.activeElement?.id || "",
+    mapView, panelView, selectedRegion, categoryFilter, gridFilters, destinationSubView,
+  });
+  const restoreContext = (entry: NavContextEntry) => {
+    pendingRestore.current = entry;
+    setActiveTab(entry.tab); setActivePlace(entry.place); setActiveState(entry.state);
+    setPanelStateId(entry.panelStateId); setMapView(entry.mapView); setPanelView(entry.panelView);
+    setSelectedRegion(entry.selectedRegion); setCategoryFilter(entry.categoryFilter);
+    setGridFilters(entry.gridFilters); setDestinationSubView(entry.destinationSubView);
+  };
+  const contextUrl = (entry: NavContextEntry) => entry.place ? "#/place/" + entry.place.id
+    : entry.state ? "#/state/" + entry.state.id
+    : "#/tab/" + entry.tab + (entry.tab === "destinations" && entry.destinationSubView === "gallery" ? "/gallery" : "");
+  const saveCurrentHistory = () => {
+    try { window.history.replaceState({ bhramanContext: captureContext(), bhramanStack: navStack }, "", window.location.href); } catch {}
+  };
+  const finishViewTransition = () => {
+    if (finishedView.current === activeViewKey && !pendingRestore.current) return;
+    finishedView.current = activeViewKey;
+    const restore = pendingRestore.current;
+    pendingRestore.current = null;
+    window.scrollTo({ top: restore?.scrollY || 0, behavior: "instant" });
+    const target = (restore?.focusId && document.getElementById(restore.focusId))
+      || document.getElementById(restore ? "india-explorer" : "main-content");
+    target?.focus({ preventScroll: true });
+  };
+
   const featured = useMemo(() => places.filter((p) => p.featured).slice(0, 8), [places]);
 
-  // Synchronize initial URL hash on mount
+  // Deep links resolve once destinations are available; history retains exploration context.
   useEffect(() => {
+    if (initialRoute.current) return;
     const hash = window.location.hash;
     if (hash.startsWith("#/place/")) {
-      const placeId = hash.replace("#/place/", "");
-      const found = places.find((p) => p.id === placeId) || PLACES_DATA.find((p) => p.id === placeId);
-      if (found) {
-        setActivePlace(found);
-      }
+      const id = hash.slice(8);
+      const found = places.find(p => p.id === id) || PLACES_DATA.find(p => p.id === id);
+      if (!found && isPlacesLoading) return;
+      setActivePlace(found || null);
     } else if (hash.startsWith("#/state/")) {
-      const stateId = hash.replace("#/state/", "");
-      const found = STATES_DATA.find((s) => s.id === stateId);
-      if (found) {
-        setActiveState(found);
-      }
+      setActiveState(stateById(hash.slice(8)) || null);
     } else if (hash.startsWith("#/tab/")) {
-      const tab = hash.replace("#/tab/", "") as NavTab;
-      if (VALID_NAV_TABS.includes(tab)) {
-        setActiveTab(tab);
-      }
+      const route = hash.slice(6);
+      if (route === "gallery" || route === "destinations/gallery") {
+        setActiveTab("destinations"); setDestinationSubView("gallery");
+      } else if (VALID_NAV_TABS.includes(route as NavTab)) setActiveTab(route as NavTab);
     }
-  }, [places]);
+    initialRoute.current = true;
+  }, [places, isPlacesLoading]);
 
-  // Listen to native browser Back and Forward button events
   useEffect(() => {
-    const handlePopState = (e: PopStateEvent) => {
-      const hash = window.location.hash;
-      if (hash.startsWith("#/place/")) {
-        const placeId = hash.replace("#/place/", "");
-        const found = places.find((p) => p.id === placeId) || PLACES_DATA.find((p) => p.id === placeId);
-        if (found) {
-          setActivePlace(found);
-          return;
-        }
-      } else if (hash.startsWith("#/state/")) {
-        const stateId = hash.replace("#/state/", "");
-        const found = STATES_DATA.find((s) => s.id === stateId);
-        if (found) {
-          setActivePlace(null);
-          setActiveState(found);
-          return;
-        }
-      } else if (hash.startsWith("#/tab/")) {
-        const tabPart = hash.replace("#/tab/", "");
-        if (tabPart === "gallery" || tabPart === "destinations/gallery") {
-          setActiveTab("destinations");
-          setDestinationSubView("gallery");
-          setActivePlace(null);
-          setActiveState(null);
-          return;
-        }
-        const tab = tabPart as NavTab;
-        if (VALID_NAV_TABS.includes(tab)) {
-          if (tab === "gallery") {
-            setActiveTab("destinations");
-            setDestinationSubView("gallery");
-          } else {
-            setActiveTab(tab);
-          }
-          setActivePlace(null);
-          setActiveState(null);
-          return;
-        }
-      }
-
-      if (e.state) {
-        if (e.state.placeId) {
-          const found = places.find((p) => p.id === e.state.placeId) || PLACES_DATA.find((p) => p.id === e.state.placeId);
-          setActivePlace(found || null);
-        } else {
-          setActivePlace(null);
-        }
-
-        if (e.state.stateId) {
-          const found = STATES_DATA.find((s) => s.id === e.state.stateId);
-          setActiveState(found || null);
-        } else {
-          setActiveState(null);
-        }
-
-        if (e.state.tab) {
-          setActiveTab(e.state.tab);
-        }
-        if (e.state.panelStateId !== undefined) {
-          setPanelStateId(e.state.panelStateId);
-        }
-      } else {
-        // Fallback pop
-        setActivePlace(null);
-        setActiveState(null);
-      }
-    };
-
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
+    const previous = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
+    return () => { window.history.scrollRestoration = previous; };
   }, []);
 
-  // Scroll to top on view changes
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
-  }, [activeTab, activePlace?.id, activeState?.id, reduceMotion]);
-
-  const handleSelectPlace = useCallback(
-    (place: Place, customOriginLabel?: string) => {
-      // Determine human-friendly context label for the back button
-      let label = customOriginLabel;
-      if (!label) {
-        if (activePlace) {
-          label = `Back to ${activePlace.name}`;
-        } else if (activeState) {
-          label = `Back to ${activeState.name}`;
-        } else if (activeTab === "gallery") {
-          label = "Back to Photo Gallery";
-        } else if (activeTab === "destinations") {
-          label = destinationSubView === "gallery"
-            ? "Back to Photo Gallery"
-            : gridFilters.searchQuery.trim()
-            ? `Back to Search`
-            : gridFilters.category !== "all" || gridFilters.selectedRegion !== "all" || gridFilters.selectedTag !== "all"
-            ? `Back to Filtered Results`
-            : `Back to Destinations`;
-        } else if (activeTab === "planner") {
-          label = "Back to Planner";
-        } else if (activeTab === "my-list") {
-          label = "Back to My List";
-        } else {
-          label = panelStateId ? `Back to Map` : "Back to Map";
-        }
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state?.bhramanContext) {
+        restoreContext(event.state.bhramanContext);
+        setNavStack(event.state.bhramanStack || []);
+        return;
       }
-
-      const snapshot: NavContextEntry = {
-        tab: activeTab,
-        place: activePlace,
-        state: activeState,
-        panelStateId,
-        label,
-      };
-
-      setNavStack((prev) => [...prev, snapshot]);
-      setActivePlace(place);
-
-      // Update browser history
-      try {
-        window.history.pushState(
-          {
-            type: "place",
-            placeId: place.id,
-            tab: activeTab,
-            stateId: activeState?.id || null,
-            panelStateId,
-          },
-          "",
-          `#/place/${place.id}`
-        );
-      } catch {
-        // ignore in restrictive environments
+      const hash = window.location.hash;
+      setActivePlace(hash.startsWith("#/place/") ? places.find(p => p.id === hash.slice(8)) || PLACES_DATA.find(p => p.id === hash.slice(8)) || null : null);
+      setActiveState(hash.startsWith("#/state/") ? stateById(hash.slice(8)) || null : null);
+      if (hash.startsWith("#/tab/")) {
+        const route = hash.slice(6);
+        if (route === "gallery" || route === "destinations/gallery") { setActiveTab("destinations"); setDestinationSubView("gallery"); }
+        else if (VALID_NAV_TABS.includes(route as NavTab)) setActiveTab(route as NavTab);
       }
-    },
-    [activePlace, activeState, activeTab, panelStateId, gridFilters]
-  );
-
-  const handleSelectStateFromMap = (state: StateData) => {
-    setPanelStateId(state.id);
-  };
-
-  const handleOpenFullStateGuide = (state: StateData) => {
-    const snapshot: NavContextEntry = {
-      tab: activeTab,
-      place: null,
-      state: null,
-      panelStateId,
-      label: "Back to Map",
+      setNavStack([]);
     };
-    setNavStack((prev) => [...prev, snapshot]);
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [places]);
+
+  const handleSelectPlace = (place: Place, customOriginLabel?: string) => {
+    if (!place) return;
+    const label = customOriginLabel || (activeState ? "Back to " + activeState.name : activeTab === "destinations" ? "Back to Destinations" : "Back to Map");
+    const snapshot = captureContext(label);
+    saveCurrentHistory();
+    const nextStack = [...navStack, snapshot];
+    const next = { ...snapshot, place, scrollY: 0, focusId: "" };
+    setNavStack(nextStack); setActivePlace(place);
+    try { window.history.pushState({ bhramanContext: next, bhramanStack: nextStack }, "", "#/place/" + place.id); } catch {}
+  };
+  const handleSelectStateFromMap = (state: StateData) => {
+    setSelectedRegion(region => region === "all" || region === state.region ? region : "all");
+    setPanelStateId(state.id);
+    setPanelView({ ...DEFAULT_PANEL_VIEW, tab: categoryFilter === "hidden" ? "hidden" : "iconic" });
+    setMapView(view => ({ ...view, focusedStateId: state.id, camera: fitState(state.bbox, MAP_WIDTH, MAP_HEIGHT, window.matchMedia("(max-width: 1023px)").matches) }));
+  };
+  const closeStatePreview = () => {
+    const id = panelStateId;
     setPanelStateId(null);
-    setActiveState(state);
-    setActivePlace(null);
-
-    try {
-      window.history.pushState(
-        {
-          type: "state",
-          stateId: state.id,
-          tab: activeTab,
-        },
-        "",
-        `#/state/${state.id}`
-      );
-    } catch {
-      // ignore
-    }
+    document.getElementById("map-state-" + id)?.focus({ preventScroll: true });
   };
-
+  const handleOpenFullStateGuide = (state: StateData) => {
+    const snapshot = captureContext(activePlace ? "Back to " + activePlace.name : "Back to Map");
+    saveCurrentHistory();
+    const nextStack = [...navStack, snapshot];
+    const next = { ...snapshot, place: null, state, scrollY: 0, focusId: "" };
+    setNavStack(nextStack); setActivePlace(null); setActiveState(state);
+    try { window.history.pushState({ bhramanContext: next, bhramanStack: nextStack }, "", "#/state/" + state.id); } catch {}
+  };
   const handleBack = () => {
-    if (navStack.length > 0) {
-      const lastEntry = navStack[navStack.length - 1];
-      setNavStack((prev) => prev.slice(0, -1));
-      setActiveTab(lastEntry.tab);
-      setActivePlace(lastEntry.place);
-      setActiveState(lastEntry.state);
-      setPanelStateId(lastEntry.panelStateId);
-
-      try {
-        if (lastEntry.place) {
-          window.history.replaceState(null, "", `#/place/${lastEntry.place.id}`);
-        } else if (lastEntry.state) {
-          window.history.replaceState(null, "", `#/state/${lastEntry.state.id}`);
-        } else {
-          window.history.replaceState(null, "", `#/tab/${lastEntry.tab}`);
-        }
-      } catch {
-        // ignore
-      }
+    if (navStack.length && window.history.state?.bhramanContext) { window.history.back(); return; }
+    const entry = navStack.at(-1);
+    if (entry) {
+      restoreContext(entry); setNavStack(navStack.slice(0, -1));
+      try { window.history.replaceState({ bhramanContext: entry, bhramanStack: navStack.slice(0, -1) }, "", contextUrl(entry)); } catch {}
     } else {
-      setActivePlace(null);
-      setActiveState(null);
-      try {
-        window.history.replaceState(null, "", `#/tab/${activeTab}`);
-      } catch {
-        // ignore
-      }
+      setActivePlace(null); setActiveState(null);
+      try { window.history.replaceState(null, "", "#/tab/" + activeTab); } catch {}
     }
   };
-
   const handleClosePlace = () => {
-    // Find the base root view before any place detail stack
-    const baseEntry = [...navStack].reverse().find((e) => !e.place) || navStack[0];
-    if (baseEntry) {
-      setActiveTab(baseEntry.tab);
-      setActiveState(baseEntry.state);
-      setPanelStateId(baseEntry.panelStateId);
-    }
-    setActivePlace(null);
-    setNavStack([]);
-
-    try {
-      if (baseEntry?.state) {
-        window.history.replaceState(null, "", `#/state/${baseEntry.state.id}`);
-      } else {
-        window.history.replaceState(null, "", `#/tab/${baseEntry?.tab || activeTab}`);
-      }
-    } catch {
-      // ignore
-    }
+    let index = navStack.length - 1;
+    while (index >= 0 && navStack[index].place) index--;
+    if (index >= 0 && window.history.state?.bhramanContext) { window.history.go(-(navStack.length - index)); return; }
+    handleBack();
   };
 
   const handleSurpriseMe = () => {
@@ -363,6 +249,7 @@ function BhramanApp() {
   };
 
   const handleSelectTab = (tab: NavTab) => {
+    saveCurrentHistory();
     const gallery = tab === "gallery";
     setActiveTab(gallery ? "destinations" : tab);
     if (gallery) setDestinationSubView("gallery");
@@ -414,6 +301,7 @@ function BhramanApp() {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col antialiased selection:bg-primary/25 selection:text-primary">
+      <div inert={showIntro} aria-hidden={showIntro || undefined} className="flex min-h-screen flex-col">
       {/* Top Navigation */}
       <Navbar
         places={places}
@@ -431,7 +319,9 @@ function BhramanApp() {
           <motion.div
             key={activeViewKey}
             initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }}
-            animate={{ opacity: 1, y: 0 }}
+            animate="enter"
+            variants={{ enter: { opacity: 1, y: 0 } }}
+            onAnimationComplete={definition => { if (definition === "enter") finishViewTransition(); }}
             exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.12 } }}
             transition={{ duration: reduceMotion ? 0 : 0.22, ease: "easeOut" }}
             className="w-full"
@@ -453,10 +343,7 @@ function BhramanApp() {
             state={activeState}
             places={places}
             onBack={handleBack}
-            onClose={() => {
-              setActiveState(null);
-              setNavStack([]);
-            }}
+            onClose={handleBack}
             onSelectPlace={(place) => handleSelectPlace(place, `Back to ${activeState.name}`)}
             onAskYatra={handleAskYatra}
           />
@@ -617,7 +504,7 @@ function BhramanApp() {
                   <SearchBar
                     places={places}
                     onSelectPlace={(place) => handleSelectPlace(place, "Back to Map")}
-                    onSelectState={handleOpenFullStateGuide}
+                    onSelectState={handleSelectStateFromMap}
                     placeholder="Search any destination or state on map..."
                   />
                 </div>
@@ -700,17 +587,20 @@ function BhramanApp() {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Pan & zoom freely or click state outlines for instant drawer guides
+                Select a state to explore its places without losing your bearings.
               </p>
 
-              <IndiaMap
+              <ExplorerShell
                 places={places}
-                selectedStateId={panelStateId || undefined}
+                stateId={panelStateId}
                 onSelectState={handleSelectStateFromMap}
                 onSelectPlace={(place) => handleSelectPlace(place, "Back to Map")}
                 selectedRegion={selectedRegion}
-                onSelectRegion={setSelectedRegion}
+                onSelectRegion={region => { setSelectedRegion(region); setPanelStateId(null); setMapView(DEFAULT_MAP_VIEW); }}
                 categoryFilter={categoryFilter}
+                mapView={mapView} onMapViewChange={setMapView}
+                panelView={panelView} onPanelViewChange={setPanelView}
+                onClose={closeStatePreview} onOpenFullGuide={handleOpenFullStateGuide}
               />
             </section>
 
@@ -761,19 +651,6 @@ function BhramanApp() {
         </AnimatePresence>
       </div>
 
-      {/* Slide-in State Panel Drawer */}
-      <AnimatePresence>
-        {panelStateId && (
-          <StatePanel
-            stateId={panelStateId}
-            places={places}
-            onClose={() => setPanelStateId(null)}
-            onSelectPlace={(p) => handleSelectPlace(p, "Back to Map")}
-            onOpenFullGuide={handleOpenFullStateGuide}
-          />
-        )}
-      </AnimatePresence>
-
       {/* Yatra Floating India Travel Chatbot */}
       <YatraChatbot
         places={places}
@@ -786,6 +663,7 @@ function BhramanApp() {
       {/* Global Footer */}
       <Footer onSelectState={handleOpenFullStateGuide} onDataRefreshed={refreshDestinations} />
 
+      </div>
       {/* Cinematic Monument Silhouette Morph Intro Animation */}
       <AnimatePresence>
         {showIntro && (
@@ -811,4 +689,5 @@ export default function App() {
     </MotionConfig>
   );
 }
+
 

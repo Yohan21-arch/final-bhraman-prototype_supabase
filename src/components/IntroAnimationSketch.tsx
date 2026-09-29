@@ -57,6 +57,7 @@ export interface IntroAnimationSketchProps {
 }
 
 export function IntroAnimationSketch({ onFinished }: IntroAnimationSketchProps) {
+  const cancelledRef = useRef(false);
   const skipRef = useRef<HTMLButtonElement>(null);
   const shouldReduceMotion = useReducedMotion();
   const [stage, setStage] = useState<"sketch" | "dissolve" | "title" | "exit">("sketch");
@@ -69,59 +70,64 @@ export function IntroAnimationSketch({ onFinished }: IntroAnimationSketchProps) 
 
   useEffect(() => {
     let cancelled = false;
+    cancelledRef.current = false;
 
     const run = async () => {
       if (shouldReduceMotion) {
         // Respect prefers-reduced-motion: skip straight to the title, no morphing.
         setStage("title");
-        await wait(900);
-        if (cancelled) return;
+        await wait(500);
+      if (cancelled || cancelledRef.current) return;
+        if (cancelled || cancelledRef.current) return;
         setStage("exit");
-        await wait(400);
-        if (!cancelled) setVisible(false);
+        await wait(200);
+        if (!cancelled && !cancelledRef.current) setVisible(false);
         return;
       }
 
       // 1. Sketch the Taj Mahal outline in.
-      await animate(drawProgress, 1, { duration: 0.8, ease: [0.65, 0, 0.35, 1] });
-      if (cancelled) return;
+      await animate(drawProgress, 1, { duration: 1.8, ease: [0.65, 0, 0.35, 1] });
+      if (cancelled || cancelledRef.current) return;
       setShowArchAccent(true);
-      await wait(150);
-      if (cancelled) return;
+      await wait(500);
+      if (cancelled || cancelledRef.current) return;
+      if (cancelled || cancelledRef.current) return;
       setShowArchAccent(false);
 
       // 2. Morph Taj Mahal -> Red Fort.
       const tajToFort = interpolate(TAJ_MAHAL_PATH, RED_FORT_PATH, { maxSegmentLength: 2 });
       morphT.set(0);
       await animate(morphT, 1, {
-        duration: 0.6,
+        duration: 1.5,
         ease: [0.65, 0, 0.35, 1],
         onUpdate: (t) => dValue.set(tajToFort(t)),
       });
-      if (cancelled) return;
-      await wait(150);
+      if (cancelled || cancelledRef.current) return;
+      await wait(500);
+      if (cancelled || cancelledRef.current) return;
 
       // 3. Morph Red Fort -> Qutub Minar.
       const fortToMinar = interpolate(RED_FORT_PATH, QUTUB_MINAR_PATH, { maxSegmentLength: 2 });
       morphT.set(0);
       await animate(morphT, 1, {
-        duration: 0.6,
+        duration: 1.5,
         ease: [0.65, 0, 0.35, 1],
         onUpdate: (t) => dValue.set(fortToMinar(t)),
       });
-      if (cancelled) return;
-      await wait(150);
+      if (cancelled || cancelledRef.current) return;
+      await wait(500);
+      if (cancelled || cancelledRef.current) return;
 
       // 4. Dissolve the sketch outward, then reveal the title.
       setStage("dissolve");
-      await wait(350);
-      if (cancelled) return;
+      await wait(700);
+      if (cancelled || cancelledRef.current) return;
       setStage("title");
-      await wait(650);
-      if (cancelled) return;
+      await wait(1700);
+      if (cancelled || cancelledRef.current) return;
       setStage("exit");
-      await wait(350);
-      if (!cancelled) setVisible(false);
+      await wait(700);
+      if (!cancelled && !cancelledRef.current) setVisible(false);
     };
 
     run();
@@ -137,8 +143,14 @@ export function IntroAnimationSketch({ onFinished }: IntroAnimationSketchProps) 
 
   const skip = () => {
     setStage("exit");
-    setVisible(false);
+    cancelledRef.current = true;
   };
+
+  useEffect(() => {
+    if (stage !== "exit") return;
+    const timer = window.setTimeout(() => setVisible(false), shouldReduceMotion ? 200 : 700);
+    return () => window.clearTimeout(timer);
+  }, [stage, shouldReduceMotion]);
 
   useEffect(() => {
     const previousFocus = document.activeElement as HTMLElement | null;
@@ -155,7 +167,10 @@ export function IntroAnimationSketch({ onFinished }: IntroAnimationSketchProps) 
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = previousOverflow;
-      previousFocus?.focus();
+      requestAnimationFrame(() => {
+        if (previousFocus && previousFocus !== document.body) previousFocus.focus({ preventScroll: true });
+        else document.getElementById("main-content")?.focus({ preventScroll: true });
+      });
     };
   }, []);
 
@@ -194,9 +209,9 @@ export function IntroAnimationSketch({ onFinished }: IntroAnimationSketchProps) 
         animate={
           stage === "sketch"
             ? { opacity: 1, scale: 1, filter: "blur(0px)" }
-            : { opacity: 0, scale: 1.18, filter: "blur(8px)" }
+            : { opacity: 0, scale: shouldReduceMotion ? 1 : 1.18, filter: shouldReduceMotion ? "none" : "blur(8px)" }
         }
-        transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: shouldReduceMotion ? 0.15 : 0.9, ease: [0.22, 1, 0.36, 1] }}
         className="relative z-10 w-[85vw] max-w-xl"
       >
         <svg viewBox="0 0 400 240" className="w-full h-auto overflow-visible">
@@ -233,9 +248,9 @@ export function IntroAnimationSketch({ onFinished }: IntroAnimationSketchProps) 
         {(stage === "title" || stage === "exit") && (
           <motion.div
             key="title"
-            initial={{ opacity: 0, scale: 0.85, filter: "blur(4px)" }}
+            initial={{ opacity: 0, scale: shouldReduceMotion ? 1 : 0.85, filter: shouldReduceMotion ? "none" : "blur(4px)" }}
             animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: shouldReduceMotion ? 0.15 : 0.9, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 px-6 text-center"
           >
             <h1
@@ -245,9 +260,9 @@ export function IntroAnimationSketch({ onFinished }: IntroAnimationSketchProps) 
               Bhraman
             </h1>
             <motion.p
-              initial={{ opacity: 0, y: 6 }}
+              initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 6 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35, duration: 0.6 }}
+              transition={{ delay: shouldReduceMotion ? 0 : 0.35, duration: shouldReduceMotion ? 0.15 : 0.6 }}
               className="text-xs sm:text-sm uppercase tracking-[0.4em] text-white/50"
             >
               Discover India
@@ -258,4 +273,5 @@ export function IntroAnimationSketch({ onFinished }: IntroAnimationSketchProps) 
     </motion.div>
   );
 }
+
 

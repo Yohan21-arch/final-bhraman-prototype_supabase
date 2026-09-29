@@ -1,501 +1,244 @@
-import { useState, useRef, type MouseEvent, useEffect } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import {
-  ZoomIn,
-  ZoomOut,
-  RotateCcw,
-  MapPin,
-  Sparkles,
-  Compass,
-  Layers,
-  Eye,
-  EyeOff,
-  Maximize2,
-  CheckCircle2,
-} from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent, type KeyboardEvent } from "react";
+import { useReducedMotion } from "motion/react";
+import { Compass, Eye, EyeOff, Hand, MapPin, Minus, Plus, RotateCcw, X } from "lucide-react";
 import { STATES_DATA, MAP_WIDTH, MAP_HEIGHT, REGION_NAMES } from "@/data/states";
-import { PLACES_DATA, placesByState } from "@/data/places";
 import { projectCoordinates, invertCoordinates } from "@/lib/geo";
-import type { StateData, Region, Place, GeoCoordinates } from "@/types";
+import { clampCamera, zoomAt, DEFAULT_CAMERA, type MapCamera, type MapViewState } from "@/lib/map-camera";
+import type { Place, StateData, Region } from "@/types";
 import { cn } from "@/lib/utils";
 
-export function IndiaMap({
-  selectedStateId,
-  onSelectState,
-  onSelectPlace,
-  selectedRegion,
-  onSelectRegion,
-  categoryFilter,
-  places = PLACES_DATA,
-}: {
+interface Props {
+  places: Place[];
   selectedStateId?: string;
   onSelectState: (state: StateData) => void;
   onSelectPlace?: (place: Place) => void;
   selectedRegion: Region | "all";
-  onSelectRegion: (region: Region | "all") => void;
   categoryFilter: "all" | "iconic" | "hidden";
-  places?: Place[];
-}) {
-  const [hoveredState, setHoveredState] = useState<StateData | null>(null);
-  const [hoveredPin, setHoveredPin] = useState<Place | null>(null);
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [showLabels, setShowLabels] = useState(true);
-  const [showPins, setShowPins] = useState(true);
-  const [mouseCoords, setMouseCoords] = useState<GeoCoordinates | null>(null);
-  const dragStart = useRef({ x: 0, y: 0 });
+  view: MapViewState;
+  onViewChange: (view: MapViewState) => void;
+}
+
+export function IndiaMap({ places, selectedStateId, onSelectState, onSelectPlace, selectedRegion, categoryFilter, view, onViewChange }: Props) {
+  const reduceMotion = useReducedMotion();
   const svgRef = useRef<SVGSVGElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const gesture = useRef<{ camera: MapCamera; center: { x: number; y: number }; distance: number; count: number } | null>(null);
+  const moved = useRef(false);
+  const dragOrigin = useRef<{ x: number; y: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [touchEnabled, setTouchEnabled] = useState(false);
+  const [hoveredState, setHoveredState] = useState<string | null>(null);
+  const [hoveredPlace, setHoveredPlace] = useState<Place | null>(null);
+  const clusterPlaces = useMemo(() => (view.clusterIds || []).flatMap(id => { const place = places.find(p => p.id === id); return place ? [place] : []; }), [view.clusterIds, places]);
+  const setClusterPlaces = (next: Place[]) => update({ clusterIds: next.map(place => place.id) });
+  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const { camera, showLabels, showPins } = view;
+  useEffect(() => { if (clusterPlaces.length) document.getElementById("cluster-place-" + clusterPlaces[0].id)?.focus({ preventScroll: true }); }, [clusterPlaces]);
 
-  const activePlaces = places && places.length > 0 ? places : PLACES_DATA;
-
-  const handleZoomIn = () => setZoom((z) => Math.min(z + 0.35, 3.5));
-  const handleZoomOut = () => setZoom((z) => Math.max(z - 0.35, 0.75));
-  const handleReset = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
+  const update = (change: Partial<MapViewState>) => {
+    const next = { ...viewRef.current, ...change };
+    viewRef.current = next;
+    onViewChange(next);
   };
-
-  // Zoom to state when selected
-  const handleZoomToState = (state: StateData) => {
-    if (!state.bbox) return;
-    const [minX, minY, width, height] = state.bbox;
-    const centerX = minX + width / 2;
-    const centerY = minY + height / 2;
-
-    const targetZoom = Math.min(Math.max(MAP_WIDTH / (width * 1.6), 1.3), 3.0);
-    const targetPanX = (MAP_WIDTH / 2 - centerX) * targetZoom;
-    const targetPanY = (MAP_HEIGHT / 2 - centerY) * targetZoom;
-
-    setZoom(targetZoom);
-    setPan({ x: targetPanX, y: targetPanY });
+  const setCamera = (next: MapCamera) => update({ camera: clampCamera(next, MAP_WIDTH, MAP_HEIGHT) });
+  const pointAt = (clientX: number, clientY: number) => {
+    const matrix = svgRef.current?.getScreenCTM();
+    if (!matrix || !svgRef.current) return null;
+    const point = svgRef.current.createSVGPoint();
+    point.x = clientX; point.y = clientY;
+    const result = point.matrixTransform(matrix.inverse());
+    return { x: result.x, y: result.y };
   };
-
-  useEffect(() => {
-    if (selectedStateId) {
-      const st = STATES_DATA.find((s) => s.id === selectedStateId);
-      if (st) {
-        // Soft zoom to state if bbox is available
-        const [minX, minY, width, height] = st.bbox;
-        if (width > 0 && height > 0) {
-          const centerX = minX + width / 2;
-          const centerY = minY + height / 2;
-          const targetZoom = Math.min(Math.max(MAP_WIDTH / (width * 2.2), 1.2), 2.6);
-          setZoom(targetZoom);
-          setPan({
-            x: (MAP_WIDTH / 2 - centerX) * targetZoom,
-            y: (MAP_HEIGHT / 2 - centerY) * targetZoom,
-          });
-        }
-      }
+  const rebaseGesture = () => {
+    const points = [...pointers.current.values()];
+    if (!points.length) { gesture.current = null; return; }
+    const a = points[0], b = points[1] || a;
+    gesture.current = { camera: viewRef.current.camera, center: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, distance: Math.hypot(b.x - a.x, b.y - a.y), count: points.length };
+  };
+  const onPointerDown = (event: PointerEvent<SVGSVGElement>) => {
+    if (!pointers.current.size) moved.current = false;
+    if (event.pointerType === "touch" && !touchEnabled) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    const point = pointAt(event.clientX, event.clientY);
+    if (!point) return;
+    if (!pointers.current.size) { moved.current = false; dragOrigin.current = { x: event.clientX, y: event.clientY }; }
+    pointers.current.set(event.pointerId, point);
+    // Capture on the actual hit target: a tap still activates its state or pin.
+    (event.target as Element).setPointerCapture?.(event.pointerId);
+    rebaseGesture();
+    setDragging(true);
+  };
+  const onPointerMove = (event: PointerEvent<SVGSVGElement>) => {
+    const point = pointAt(event.clientX, event.clientY);
+    if (!point) return;
+    const current = viewRef.current.camera;
+    if (event.pointerType === "mouse") {
+      setCoordinates(invertCoordinates((point.x - current.x) / current.zoom, (point.y - current.y) / current.zoom));
     }
-  }, [selectedStateId]);
-
-  const handleMouseDown = (e: MouseEvent) => {
-    setIsDragging(true);
-    dragStart.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
-  };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    // Calculate live geographical coordinates under mouse
-    if (svgRef.current) {
-      const rect = svgRef.current.getBoundingClientRect();
-      const clientX = e.clientX - rect.left;
-      const clientY = e.clientY - rect.top;
-
-      // Transform from screen coords back to SVG viewBox coords
-      const svgX = (clientX / rect.width) * MAP_WIDTH;
-      const svgY = (clientY / rect.height) * MAP_HEIGHT;
-
-      // Account for pan & zoom
-      const unprojectedX = (svgX - MAP_WIDTH / 2 - pan.x) / zoom + MAP_WIDTH / 2;
-      const unprojectedY = (svgY - MAP_HEIGHT / 2 - pan.y) / zoom + MAP_HEIGHT / 2;
-
-      const geo = invertCoordinates(unprojectedX, unprojectedY);
-      if (geo && geo.lat >= 6 && geo.lat <= 38 && geo.lng >= 66 && geo.lng <= 99) {
-        setMouseCoords(geo);
-      } else {
-        setMouseCoords(null);
-      }
-    }
-
-    if (!isDragging) return;
-    setPan({
-      x: e.clientX - dragStart.current.x,
-      y: e.clientY - dragStart.current.y,
+    if (!pointers.current.has(event.pointerId)) return;
+    pointers.current.set(event.pointerId, point);
+    const start = gesture.current;
+    if (!start) return;
+    const points = [...pointers.current.values()];
+    const a = points[0], b = points[1] || a;
+    if (points.length > 1 || (dragOrigin.current && Math.hypot(event.clientX - dragOrigin.current.x, event.clientY - dragOrigin.current.y) > 6)) moved.current = true;
+    if (!moved.current) return;
+    const center = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    const distance = Math.hypot(b.x - a.x, b.y - a.y);
+    const zoom = points.length > 1 && start.distance > 0 ? Math.max(1, Math.min(5, start.camera.zoom * distance / start.distance)) : start.camera.zoom;
+    setCamera({
+      zoom,
+      x: center.x - (start.center.x - start.camera.x) * zoom / start.camera.zoom,
+      y: center.y - (start.center.y - start.camera.y) * zoom / start.camera.zoom,
     });
+    setHoveredPlace(null);
+  };
+  const endPointer = (event: PointerEvent<SVGSVGElement>) => {
+    pointers.current.delete(event.pointerId);
+    if (event.type === "pointercancel") moved.current = true;
+    if (!pointers.current.size) setDragging(false);
+    rebaseGesture();
+  };
+  const adjustZoom = (factor: number) => setCamera(zoomAt(viewRef.current.camera, { x: MAP_WIDTH / 2, y: MAP_HEIGHT / 2 }, viewRef.current.camera.zoom * factor, MAP_WIDTH, MAP_HEIGHT));
+  const activateState = (state: StateData) => {
+    update({ focusedStateId: state.id });
+    setClusterPlaces([]);
+    onSelectState(state);
+  };
+  const stateKeys = (event: KeyboardEvent<SVGPathElement>, state: StateData) => {
+    if (event.key === "Enter" || event.key === " ") { event.preventDefault(); activateState(state); return; }
+    const step = ["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : ["ArrowLeft", "ArrowUp"].includes(event.key) ? -1 : 0;
+    if (step) {
+      event.preventDefault(); event.stopPropagation();
+      const states = STATES_DATA.filter((s) => selectedRegion === "all" || s.region === selectedRegion);
+      const next = states[(states.findIndex((s) => s.id === state.id) + step + states.length) % states.length];
+      update({ focusedStateId: next.id });
+      document.getElementById("map-state-" + next.id)?.focus();
+    }
   };
 
-  const handleMouseUp = () => setIsDragging(false);
-
-  const visiblePlaces = activePlaces.filter((p) => {
-    if (categoryFilter !== "all" && p.category !== categoryFilter) return false;
-    if (selectedRegion !== "all") {
-      const s = STATES_DATA.find((st) => st.id === p.state);
-      if (s && s.region !== selectedRegion) return false;
+  const regionStates = useMemo(() => STATES_DATA.filter((state) => selectedRegion === "all" || state.region === selectedRegion), [selectedRegion]);
+  const focusId = regionStates.some((state) => state.id === view.focusedStateId) ? view.focusedStateId : regionStates[0]?.id;
+  const filtered = useMemo(() => places.filter((place) => {
+    const state = STATES_DATA.find((s) => s.id === place.state);
+    return (categoryFilter === "all" || place.category === categoryFilter) && (selectedRegion === "all" || state?.region === selectedRegion);
+  }), [places, selectedRegion, categoryFilter]);
+  const visiblePins = useMemo(() => filtered.filter((place) => selectedStateId ? place.state === selectedStateId : camera.zoom >= 1.8 || selectedRegion !== "all" || categoryFilter !== "all" || place.featured), [filtered, selectedStateId, camera.zoom, selectedRegion, categoryFilter]);
+  const clusters = useMemo(() => {
+    const groups: { x: number; y: number; places: Place[] }[] = [];
+    for (const place of visiblePins) {
+      const point = projectCoordinates(place.coordinates.lng, place.coordinates.lat);
+      const group = groups.find((g) => Math.hypot((g.x - point.x) * camera.zoom, (g.y - point.y) * camera.zoom) < 30);
+      if (group) group.places.push(place); else groups.push({ ...point, places: [place] });
     }
-    return true;
-  });
+    return groups;
+  }, [visiblePins, camera.zoom]);
+  const labels = useMemo(() => {
+    const accepted: { x: number; y: number; width: number }[] = [];
+    return [...regionStates].sort((a, b) => Number(b.id === selectedStateId) - Number(a.id === selectedStateId) || b.bbox[2] * b.bbox[3] - a.bbox[2] * a.bbox[3]).filter((state) => {
+      const [x, y] = state.labelPos || [state.bbox[0] + state.bbox[2] / 2, state.bbox[1] + state.bbox[3] / 2];
+      const point = { x: x * camera.zoom + camera.x, y: y * camera.zoom + camera.y, width: state.name.length * 6.3 + 12 };
+      if (point.x < 0 || point.x > MAP_WIDTH || point.y < 0 || point.y > MAP_HEIGHT) return false;
+      if (state.id !== selectedStateId && state.id !== hoveredState && accepted.some((p) => Math.abs(p.y - point.y) < 22 && Math.abs(p.x - point.x) < (p.width + point.width) / 2)) return false;
+      accepted.push(point); return true;
+    });
+  }, [regionStates, selectedStateId, hoveredState, camera]);
+  const hover = STATES_DATA.find((state) => state.id === hoveredState);
+  const hint = hoveredPlace?.name || hover?.name;
+  const reset = () => { update({ camera: DEFAULT_CAMERA }); setClusterPlaces([]); };
 
   return (
-    <div
-      ref={containerRef}
-      className="relative w-full h-[640px] md:h-[720px] lg:h-[780px] overflow-hidden rounded-2xl border border-border/90 bg-gradient-to-b from-card/95 via-card/60 to-background select-none shadow-2xl transition-all"
-    >
-      {/* Subtle Cartographic Grid Background */}
-      <div className="absolute inset-0 bg-[radial-gradient(rgba(212,175,55,0.08)_1px,transparent_1px)] [background-size:28px_28px] pointer-events-none" />
-
-      {/* Top Left: Region Filter & Map Info Header */}
-      <div className="absolute top-2 sm:top-4 left-2 sm:left-4 right-2 sm:right-4 z-20 flex flex-wrap items-center justify-between gap-2 sm:gap-3 pointer-events-auto">
-        {/* Region Filter Chips */}
-        <div className="flex items-center gap-1 sm:gap-1.5 rounded-2xl sm:rounded-full border border-border/90 bg-background/85 p-1 backdrop-blur-xl shadow-lg max-w-full overflow-x-auto">
-          {(["all", "north", "south", "west", "east", "northeast", "central"] as const).map((r) => {
-            const isSelected = selectedRegion === r;
-            return (
-              <button
-                key={r}
-                onClick={() => onSelectRegion(r)}
-                className={cn(
-                  "rounded-full px-2.5 sm:px-3 py-1 text-[10px] sm:text-[11px] uppercase tracking-wider font-semibold transition-all shrink-0 cursor-pointer",
-                  isSelected
-                    ? "bg-primary text-primary-foreground shadow-md font-bold"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
-                )}
-              >
-                {r === "all" ? "All India" : REGION_NAMES[r].replace(" India", "")}
-              </button>
-            );
+    <div className="atlas-canvas">
+      <div className="atlas-toolbar">
+        <div className="flex items-center gap-1 rounded-full border border-border bg-background/95 p-1">
+          <button className="atlas-control" onClick={() => adjustZoom(1.3)} disabled={camera.zoom >= 5} aria-label="Zoom in"><Plus className="size-4" /></button>
+          <span className="w-9 text-center text-xs tabular-nums text-muted-foreground">{camera.zoom.toFixed(1)}×</span>
+          <button className="atlas-control" onClick={() => adjustZoom(1 / 1.3)} disabled={camera.zoom <= 1} aria-label="Zoom out"><Minus className="size-4" /></button>
+          <button className="atlas-control" onClick={reset} aria-label="Reset map view"><RotateCcw className="size-4" /></button>
+        </div>
+        <div className="flex items-center gap-1 rounded-full border border-border bg-background/95 p-1">
+          <button className="atlas-control" onClick={() => update({ showLabels: !showLabels })} aria-label="State labels" aria-pressed={showLabels}>{showLabels ? <Eye className="size-4" /> : <EyeOff className="size-4" />}</button>
+          <button className="atlas-control" onClick={() => update({ showPins: !showPins })} aria-label="Destination pins" aria-pressed={showPins}><MapPin className="size-4" /></button>
+        </div>
+      </div>
+      <div className="atlas-touch-controls">
+        <button className={cn("min-h-11 rounded-full border px-3 text-xs", touchEnabled ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground")}
+          aria-pressed={touchEnabled} onClick={() => { setTouchEnabled(!touchEnabled); pointers.current.clear(); setDragging(false); }}>
+          <Hand className="mr-1.5 inline size-3.5" />{touchEnabled ? "Finish moving map" : "Pan & pinch map"}
+        </button>
+        <span className="max-w-40 text-[11px] leading-tight text-muted-foreground">{touchEnabled ? "Drag or pinch. Finish to scroll the page." : "Tap a state, or scroll past the map."}</span>
+      </div>
+      <svg ref={svgRef} viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`} className={cn("atlas-svg", dragging && "is-dragging")}
+        style={{ touchAction: touchEnabled ? "none" : "pan-y" }}
+        role="group" aria-label="Interactive India map" aria-describedby="map-keyboard-help" tabIndex={0}
+        onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endPointer} onPointerCancel={endPointer}
+        onLostPointerCapture={endPointer}
+        onPointerLeave={() => { if (!dragging) { setHoveredState(null); setHoveredPlace(null); setCoordinates(null); } }}
+        onClickCapture={(event) => { if (event.detail !== 0 && moved.current) { event.preventDefault(); event.stopPropagation(); moved.current = false; } }}
+        onKeyDown={(event) => {
+          if (event.target !== event.currentTarget) return;
+          const delta = 60;
+          if (["+", "=", "-", "0", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) event.preventDefault();
+          if (event.key === "+" || event.key === "=") adjustZoom(1.3);
+          if (event.key === "-") adjustZoom(1 / 1.3);
+          if (event.key === "0") reset();
+          if (event.key.startsWith("Arrow")) setCamera({ ...camera, x: camera.x + (event.key === "ArrowLeft" ? delta : event.key === "ArrowRight" ? -delta : 0), y: camera.y + (event.key === "ArrowUp" ? delta : event.key === "ArrowDown" ? -delta : 0) });
+        }}>
+        <title>Explore India's states and destinations</title>
+        <defs><pattern id="atlas-grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="var(--primary)" strokeOpacity="0.07" strokeWidth="0.5" /></pattern></defs>
+        <rect width={MAP_WIDTH} height={MAP_HEIGHT} fill="url(#atlas-grid)" className="text-primary/10" aria-hidden="true" />
+        <g transform={`translate(${camera.x} ${camera.y}) scale(${camera.zoom})`} style={{ transition: dragging || reduceMotion ? "none" : "transform 280ms cubic-bezier(0.22,1,0.36,1)" }}>
+          {STATES_DATA.map((state) => {
+            const selected = selectedStateId === state.id;
+            const inRegion = selectedRegion === "all" || selectedRegion === state.region;
+            return <path key={state.id} id={"map-state-" + state.id} d={state.d} role="button" aria-label={"Explore " + state.name} aria-pressed={selected}
+              tabIndex={focusId === state.id ? 0 : -1} vectorEffect="non-scaling-stroke"
+              className={cn("atlas-state", selected && "is-selected", !inRegion && "is-muted")}
+              onClick={() => activateState(state)} onKeyDown={(event) => stateKeys(event, state)}
+              onFocus={() => { setHoveredState(state.id); update({ focusedStateId: state.id }); }}
+              onBlur={() => setHoveredState(null)}
+              onPointerEnter={(event) => { if (event.pointerType !== "touch") setHoveredState(state.id); }}
+              onPointerLeave={() => setHoveredState(null)} />;
           })}
-        </div>
-
-        {/* Top Right: Layer & Zoom Controls */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {/* Toggle Labels */}
-          <button
-            onClick={() => setShowLabels(!showLabels)}
-            title={showLabels ? "Hide State Labels" : "Show State Labels"}
-            className={cn(
-              "flex items-center gap-1 px-2.5 py-1 rounded-full border border-border/90 text-[11px] font-medium backdrop-blur-xl shadow-sm transition-all",
-              showLabels
-                ? "bg-background/90 text-foreground"
-                : "bg-muted/50 text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {showLabels ? <Eye className="size-3 text-primary" /> : <EyeOff className="size-3" />}
-            <span className="hidden sm:inline">Names</span>
-          </button>
-
-          {/* Toggle Pins */}
-          <button
-            onClick={() => setShowPins(!showPins)}
-            title={showPins ? "Hide Destinations" : "Show Destinations"}
-            className={cn(
-              "flex items-center gap-1 px-2.5 py-1 rounded-full border border-border/90 text-[11px] font-medium backdrop-blur-xl shadow-sm transition-all",
-              showPins
-                ? "bg-background/90 text-foreground"
-                : "bg-muted/50 text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <MapPin className={cn("size-3", showPins ? "text-gold" : "text-muted-foreground")} />
-            <span className="hidden sm:inline">Pins</span>
-          </button>
-
-          {/* Zoom Buttons */}
-          <div className="flex items-center gap-0.5 rounded-full border border-border/90 bg-background/85 p-1 backdrop-blur-xl shadow-lg">
-            <button
-              onClick={handleZoomIn}
-              title="Zoom In"
-              className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-            >
-              <ZoomIn className="size-3.5" />
-            </button>
-            <button
-              onClick={handleZoomOut}
-              title="Zoom Out"
-              className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-            >
-              <ZoomOut className="size-3.5" />
-            </button>
-            <button
-              onClick={handleReset}
-              title="Reset Map View"
-              className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-            >
-              <RotateCcw className="size-3.5" />
-            </button>
-          </div>
-        </div>
+          {showLabels && labels.map((state) => {
+            const point = state.labelPos || [state.bbox[0] + state.bbox[2] / 2, state.bbox[1] + state.bbox[3] / 2];
+            return <text key={state.id} x={point[0]} y={point[1]} textAnchor="middle" pointerEvents="none" aria-hidden="true"
+              fontSize={12 / camera.zoom} strokeWidth={3 / camera.zoom} className={cn("atlas-label", state.id === selectedStateId && "is-selected")}>{state.name}</text>;
+          })}
+          {showPins && clusters.map((group) => {
+            const place = group.places[0], multiple = group.places.length > 1;
+            const label = multiple ? "Show " + group.places.length + " nearby destinations" : "Explore destination: " + place.name;
+            const activate = () => { if (multiple) setClusterPlaces(group.places); else onSelectPlace?.(place); };
+            return <g key={place.id} id={"map-pin-" + place.id} transform={`translate(${group.x},${group.y}) scale(${1 / camera.zoom})`}
+              role="button" tabIndex={0} aria-label={label} className="atlas-pin"
+              onClick={activate} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); activate(); } }}
+              onPointerEnter={(event) => { if (event.pointerType !== "touch") setHoveredPlace(place); }} onPointerLeave={() => setHoveredPlace(null)}
+              onFocus={() => setHoveredPlace(place)} onBlur={() => setHoveredPlace(null)}>
+              <circle r="22" fill="transparent" />
+              {multiple ? <><circle r="14" className="fill-primary stroke-background" strokeWidth="2" /><text textAnchor="middle" dy="4" className="fill-background text-[12px] font-bold">{group.places.length}</text></>
+                : place.category === "hidden" ? <path d="M0 -7 L7 0 L0 7 L-7 0Z" className="fill-ivory stroke-background" strokeWidth="2" />
+                : <circle r="6" className="fill-primary stroke-background" strokeWidth="2" />}
+            </g>;
+          })}
+        </g>
+      </svg>
+      <div className="atlas-map-caption" aria-live="polite">
+        <Compass className="size-4 shrink-0 text-primary" />
+        <span>{hint || (selectedStateId ? "State selected · explore its places alongside the map" : "Choose a state to begin your journey")}</span>
       </div>
-
-      {/* Top Banner: Survey of India Official Boundaries Badge */}
-      <div className="absolute top-16 left-4 z-10 pointer-events-none hidden md:flex items-center gap-2 rounded-lg border border-primary/20 bg-background/70 px-2.5 py-1 text-[10px] text-muted-foreground backdrop-blur-md">
-        <CheckCircle2 className="size-3 text-emerald-500" />
-        <span>Official Survey of India Boundary (36 States & UTs)</span>
-      </div>
-
-      {/* Live Geographic Coordinates HUD in Bottom-Left */}
-      <div className="absolute bottom-12 sm:bottom-4 left-2 sm:left-4 z-20 pointer-events-none flex items-center gap-1.5 sm:gap-2 rounded-lg border border-border/80 bg-background/85 px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs backdrop-blur-md shadow-lg">
-        <Compass className="size-3.5 text-primary animate-spin-slow" />
-        {mouseCoords ? (
-          <span className="font-mono text-[10px] sm:text-[11px] text-foreground font-medium">
-            {mouseCoords.lat.toFixed(2)}°N, {mouseCoords.lng.toFixed(2)}°E
-          </span>
-        ) : (
-          <span className="text-[10px] sm:text-[11px] text-muted-foreground">Hover or tap state</span>
-        )}
-      </div>
-
-      {/* Hover Info Tooltip for State */}
-      <AnimatePresence>
-        {hoveredState && !hoveredPin && (
-          <motion.div
-            initial={{ opacity: 0, y: 8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.98 }}
-            transition={{ duration: 0.15 }}
-            className="absolute bottom-16 left-2 sm:left-4 md:left-6 right-2 sm:right-auto z-30 pointer-events-none rounded-xl border border-primary/40 bg-background/95 p-3.5 sm:p-4 shadow-2xl backdrop-blur-xl max-w-xs"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-primary animate-pulse" />
-                <p className="eyebrow text-primary text-[10px] font-semibold tracking-wider uppercase">
-                  {REGION_NAMES[hoveredState.region]}
-                </p>
-              </div>
-              <span className="text-[10px] text-muted-foreground font-mono">
-                {placesByState(hoveredState.id).length} places
-              </span>
-            </div>
-            <h4 className="display-font mt-1 text-lg font-bold text-foreground leading-tight">
-              {hoveredState.name}
-            </h4>
-            <p className="text-xs text-muted-foreground mt-1">
-              Capital: <span className="text-foreground font-medium">{hoveredState.capital}</span>
-            </p>
-            {hoveredState.bestSeasons && (
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                Season: <span className="text-foreground">{hoveredState.bestSeasons}</span>
-              </p>
-            )}
-            {hoveredState.highlights && hoveredState.highlights.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2.5">
-                {hoveredState.highlights.slice(0, 3).map((h) => (
-                  <span
-                    key={h}
-                    className="rounded-md bg-secondary/80 px-1.5 py-0.5 text-[10px] text-foreground font-medium"
-                  >
-                    {h}
-                  </span>
-                ))}
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Hover Info Tooltip for Landmark Place */}
-      <AnimatePresence>
-        {hoveredPin && (
-          <motion.div
-            initial={{ opacity: 0, y: 8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.98 }}
-            transition={{ duration: 0.15 }}
-            className="absolute bottom-16 left-2 sm:left-4 md:left-6 right-2 sm:right-auto z-30 pointer-events-none rounded-xl border border-primary/50 bg-background/95 p-3.5 sm:p-4 shadow-2xl backdrop-blur-xl max-w-sm"
-          >
-            <div className="flex items-center gap-1.5 text-primary text-[10px] uppercase tracking-wider font-semibold">
-              {hoveredPin.category === "hidden" ? (
-                <>
-                  <Sparkles className="size-3 text-primary" /> Hidden Gem
-                </>
-              ) : (
-                <>
-                  <MapPin className="size-3 text-gold" /> Iconic Landmark
-                </>
-              )}
-            </div>
-            <h4 className="display-font mt-1 text-base font-bold text-foreground">
-              {hoveredPin.name}
-            </h4>
-            <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
-              {hoveredPin.shortDesc}
-            </p>
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground mt-2 pt-2 border-t border-border/50">
-              <span>{hoveredPin.bestTimeToVisit}</span>
-              <span className="text-primary font-semibold">Click to explore →</span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Interactive SVG Canvas */}
-      <div
-        className={cn(
-          "w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing",
-          isDragging && "cursor-grabbing"
-        )}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-      >
-        <svg
-          ref={svgRef}
-          viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
-          className="w-full h-full max-h-[850px] transition-transform duration-100 ease-out"
-          style={{
-            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-            transformOrigin: "center center",
-          }}
-        >
-          <defs>
-            {/* Soft map glow filter */}
-            <filter id="map-glow" x="-10%" y="-10%" width="120%" height="120%">
-              <feGaussianBlur stdDeviation="3" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-            </filter>
-            {/* Pin drop shadow */}
-            <filter id="pin-shadow" x="-50%" y="-50%" width="200%" height="200%">
-              <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.4" />
-            </filter>
-          </defs>
-
-          {/* Tropic of Cancer Subtle Cartographic Guide (23.5° N) */}
-          <line
-            x1="50"
-            y1="410"
-            x2="750"
-            y2="410"
-            stroke="currentColor"
-            strokeDasharray="4 6"
-            className="text-border/40"
-            strokeWidth="0.8"
-          />
-          <text
-            x="60"
-            y="405"
-            className="fill-muted-foreground/30 text-[8px] font-mono uppercase tracking-widest pointer-events-none"
-          >
-            Tropic of Cancer 23.5° N
-          </text>
-
-          {/* Render State Polygons (Survey of India Boundaries) */}
-          <g className="states-layer">
-            {STATES_DATA.map((state) => {
-              const isSelected = selectedStateId === state.id;
-              const isHovered = hoveredState?.id === state.id;
-              const matchesRegion =
-                selectedRegion === "all" || state.region === selectedRegion;
-
-              return (
-                <g key={state.id} className="transition-all">
-                  <path
-                    d={state.d}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelectState(state);
-                      handleZoomToState(state);
-                    }}
-                    onMouseEnter={() => setHoveredState(state)}
-                    onMouseLeave={() => setHoveredState(null)}
-                    className={cn(
-                      "cursor-pointer transition-all duration-200",
-                      isSelected
-                        ? "fill-primary/45 stroke-primary stroke-[2.8] drop-shadow-md"
-                        : isHovered
-                        ? "fill-primary/30 stroke-primary stroke-[2.2]"
-                        : matchesRegion
-                        ? "fill-secondary/90 stroke-border hover:fill-primary/20 stroke-[1.1]"
-                        : "fill-secondary/35 stroke-border/40 opacity-40 hover:opacity-85 stroke-[0.8]"
-                    )}
-                  />
-
-                  {/* State Center Name Labels */}
-                  {showLabels && state.labelPos && (
-                    <text
-                      x={state.labelPos[0]}
-                      y={state.labelPos[1]}
-                      textAnchor="middle"
-                      pointerEvents="none"
-                      className={cn(
-                        "font-semibold tracking-wider uppercase transition-all select-none",
-                        isSelected || isHovered
-                          ? "fill-primary text-[11px] font-bold"
-                          : matchesRegion
-                          ? "fill-foreground/80 text-[9px]"
-                          : "fill-muted-foreground/35 text-[8px]"
-                      )}
-                    >
-                      {state.name}
-                    </text>
-                  )}
-                </g>
-              );
-            })}
-          </g>
-
-          {/* Landmark Place Pinpoints (Projected mathematically with D3 Geo) */}
-          {showPins && (
-            <g className="pins-layer">
-              {visiblePlaces.map((place) => {
-                const { x, y } = projectCoordinates(
-                  place.coordinates.lng,
-                  place.coordinates.lat
-                );
-                const isHidden = place.category === "hidden";
-                const isPinHovered = hoveredPin?.id === place.id;
-
-                return (
-                  <g
-                    key={place.id}
-                    transform={`translate(${x}, ${y})`}
-                    className="cursor-pointer group"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelectPlace?.(place);
-                    }}
-                    onMouseEnter={() => setHoveredPin(place)}
-                    onMouseLeave={() => setHoveredPin(null)}
-                  >
-                    {/* Animated Pulse Ring */}
-                    <circle
-                      r={isHidden ? 10 : 13}
-                      className={cn(
-                        "animate-pulse-ring",
-                        isHidden ? "fill-primary/30" : "fill-gold/30"
-                      )}
-                    />
-                    {/* Core Pin Dot */}
-                    <circle
-                      r={isPinHovered ? 6.5 : isHidden ? 4 : 5}
-                      filter="url(#pin-shadow)"
-                      className={cn(
-                        "transition-all duration-200",
-                        isHidden
-                          ? "fill-primary stroke-background stroke-2"
-                          : "fill-gold stroke-background stroke-2"
-                      )}
-                    />
-                  </g>
-                );
-              })}
-            </g>
-          )}
-        </svg>
-      </div>
-
-      {/* Bottom Floating Legend */}
-      <div className="absolute bottom-2 sm:bottom-4 right-2 sm:right-4 z-20 flex items-center gap-2 sm:gap-3 rounded-full border border-border/90 bg-background/85 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[10px] sm:text-[11px] text-muted-foreground backdrop-blur-xl shadow-md">
-        <div className="flex items-center gap-1 sm:gap-1.5">
-          <span className="size-2 sm:size-2.5 rounded-full bg-gold inline-block shadow-sm" />
-          <span className="font-medium text-foreground">Iconic</span>
-        </div>
-        <div className="flex items-center gap-1 sm:gap-1.5">
-          <span className="size-2 sm:size-2.5 rounded-full bg-primary inline-block shadow-sm" />
-          <span className="font-medium text-foreground">Hidden Gems</span>
-        </div>
+      {clusterPlaces.length > 0 && <div className="atlas-cluster-list" role="region" aria-label="Nearby destinations" onKeyDown={(event) => { if (event.key === "Escape") { event.stopPropagation(); setClusterPlaces([]); document.getElementById("map-pin-" + clusterPlaces[0].id)?.focus(); } }}>
+        <div className="mb-2 flex items-center justify-between"><p className="text-sm font-semibold">Choose a destination</p><button className="atlas-control" onClick={() => { document.getElementById("map-pin-" + clusterPlaces[0].id)?.focus(); setClusterPlaces([]); }} aria-label="Close nearby destinations"><X className="size-4" /></button></div>
+        {clusterPlaces.map((place) => <button id={"cluster-place-" + place.id} key={place.id} className="block min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-secondary" onClick={() => onSelectPlace?.(place)}>{place.name}</button>)}
+      </div>}
+      <div className="sr-only" id="map-keyboard-help">Use Tab to reach a state. Arrow keys move between states; Enter opens the preview. On the map canvas, arrows pan, plus and minus zoom, and zero resets. A state selector is available above the map.</div>
+      <div className="atlas-legend">
+        <span><span className="mr-1.5 inline-block size-2 rounded-full bg-primary" />Iconic</span>
+        <span><span className="mr-1.5 inline-block size-2 rotate-45 bg-ivory" />Hidden gems</span>
+        <span className="ml-auto hidden sm:inline">{coordinates && coordinates.lat >= 6 && coordinates.lat <= 38 && coordinates.lng >= 66 && coordinates.lng <= 99 ? `${coordinates.lat.toFixed(2)}°N, ${coordinates.lng.toFixed(2)}°E` : selectedStateId || camera.zoom >= 1.8 ? visiblePins.length + " places" : "Highlights · zoom for more"}</span>
       </div>
     </div>
   );
 }
+
