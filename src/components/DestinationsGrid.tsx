@@ -3,7 +3,7 @@ import { Sparkles, Layers, Filter, Compass, Check, Dices, RefreshCw, AlertCircle
 import { PLACES_DATA, allTags } from "@/data/places";
 import { STATES_DATA, stateById, REGION_NAMES } from "@/data/states";
 import { PlaceCard } from "@/components/PlaceCard";
-import { ImageGallery } from "@/components/ImageGallery";
+import { ImageGallery, type GalleryViewState } from "@/components/ImageGallery";
 import { getAllGalleryImages } from "@/lib/gallery";
 import type { Place, Tag, Category, Region, StateData } from "@/types";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,7 @@ export function DestinationsGrid({
   onRetry,
   activeSubView,
   onSubViewChange,
+  galleryView, onGalleryViewChange,
 }: {
   onSelectPlace: (place: Place) => void;
   onSelectState: (state: StateData) => void;
@@ -43,6 +44,7 @@ export function DestinationsGrid({
   onRetry?: () => void;
   activeSubView?: "cards" | "gallery";
   onSubViewChange?: (view: "cards" | "gallery") => void;
+  galleryView?: GalleryViewState; onGalleryViewChange?: (view: GalleryViewState) => void;
 }) {
   const [internalSubView, setInternalSubView] = useState<"cards" | "gallery">("cards");
   const [internalCategory, setInternalCategory] = useState<Category | "all">("all");
@@ -50,7 +52,7 @@ export function DestinationsGrid({
   const [internalTag, setInternalTag] = useState<Tag | "all">("all");
   const [internalQuery, setInternalQuery] = useState("");
 
-  const activePlaces = places && places.length > 0 ? places : PLACES_DATA;
+  const activePlaces = places;
   const allGalleryImages = useMemo(() => getAllGalleryImages(activePlaces), [activePlaces]);
 
   const currentMode = activeSubView !== undefined ? activeSubView : internalSubView;
@@ -118,7 +120,7 @@ export function DestinationsGrid({
   }, [activePlaces, category, selectedTag, selectedRegion, searchQuery]);
 
   return (
-    <main className="mx-auto max-w-7xl px-4 pb-28 pt-8 md:px-8">
+    <main id="destination-directory" tabIndex={-1} className="destination-directory site-container pb-24 pt-8">
       {/* Top View Toggle Bar */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/80 pb-5">
         <div>
@@ -126,30 +128,15 @@ export function DestinationsGrid({
             <p className="eyebrow flex items-center gap-1.5 text-primary">
               <Compass className="size-3.5" /> Curated Indian Atlas
             </p>
-            {isLoading ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold text-primary">
-                <RefreshCw className="size-3 animate-spin" />
-                Syncing Supabase...
-              </span>
-            ) : isUsingSupabase ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Supabase Synced ({activePlaces.length} live)
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
-                <span className="size-1.5 rounded-full bg-amber-500" />
-                Offline Fallback Cache
-              </span>
-            )}
+            <span className="destination-data-status" role="status">{isLoading ? "Refreshing destinations…" : isUsingSupabase ? "Collection updated" : "Exploring the saved collection"}</span>
           </div>
-          <h1 className="display-font mt-1 text-3xl font-extrabold text-foreground sm:text-4xl">
-            {currentMode === "gallery" ? "Destinations Photo Gallery" : "All Curated Destinations"}
+          <h1 className="display-font destination-directory-title">
+            {currentMode === "gallery" ? "Destinations Photo Gallery" : "Find a place that moves you."}
           </h1>
           <p className="mt-1 text-xs md:text-sm text-muted-foreground">
             {currentMode === "gallery"
               ? `Browse ${allGalleryImages.length} authentic, high-resolution photographs documenting monuments, passes, and coastal sanctuaries.`
-              : `Explore ${activePlaces.length} hand-scouted historical monuments, natural wonders, and offbeat sanctuaries.`}
+              : `From celebrated landmarks to quieter discoveries. Explore ${activePlaces.length} destinations at your own pace.`}
           </p>
         </div>
 
@@ -158,6 +145,7 @@ export function DestinationsGrid({
           <button
             type="button"
             id="destinations-subview-cards-btn"
+            aria-pressed={currentMode === "cards"}
             onClick={() => setMode("cards")}
             className={cn(
               "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer",
@@ -172,6 +160,7 @@ export function DestinationsGrid({
           <button
             type="button"
             id="destinations-subview-gallery-btn"
+            aria-pressed={currentMode === "gallery"}
             onClick={() => setMode("gallery")}
             className={cn(
               "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer",
@@ -194,6 +183,7 @@ export function DestinationsGrid({
           onSelectState={onSelectState}
           onAskYatra={onAskYatra}
           compact={true}
+          view={galleryView} onViewChange={onGalleryViewChange}
         />
       ) : (
         <>
@@ -201,7 +191,7 @@ export function DestinationsGrid({
             <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs text-amber-700 dark:text-amber-300">
               <div className="flex items-center gap-2">
                 <AlertCircle className="size-4 shrink-0 text-amber-500" />
-                <span>Operating on verified local destination backup ({error}).</span>
+                <span>We couldn’t refresh the collection. You can keep exploring the saved destinations.</span>
               </div>
               {onRetry && (
                 <button
@@ -209,7 +199,7 @@ export function DestinationsGrid({
                   className="inline-flex items-center gap-1 rounded-md bg-amber-500/20 px-2.5 py-1 text-[11px] font-semibold hover:bg-amber-500/30 transition-colors cursor-pointer"
                 >
                   <RefreshCw className="size-3" />
-                  Retry Sync
+                  Try again
                 </button>
               )}
             </div>
@@ -219,7 +209,8 @@ export function DestinationsGrid({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
             <div className="w-full sm:w-80">
               <input
-                type="text"
+                type="search"
+                aria-label="Search destination cards"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Filter destination cards..."
@@ -250,7 +241,9 @@ export function DestinationsGrid({
           </div>
 
       {/* Filter Bar */}
-      <div className="mt-6 space-y-4 rounded-xl border border-border/80 bg-card/60 p-4">
+      <details className="destination-filter-panel" open={category !== "all" || selectedRegion !== "all" || selectedTag !== "all" || undefined}>
+        <summary><Filter className="size-4 text-primary" /> Refine your journey <span>Category, region & theme</span></summary>
+        <div className="space-y-4 p-4">
         {/* Category Pills */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mr-1">
@@ -263,6 +256,7 @@ export function DestinationsGrid({
           ].map((c) => (
             <button
               key={c.id}
+              aria-pressed={category === c.id}
               onClick={() => setCategory(c.id as Category | "all")}
               className={cn(
                 "rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wider transition-all",
@@ -284,6 +278,7 @@ export function DestinationsGrid({
           {(["all", "north", "south", "west", "east", "northeast", "central"] as const).map((r) => (
             <button
               key={r}
+              aria-pressed={selectedRegion === r}
               onClick={() => setSelectedRegion(r)}
               className={cn(
                 "rounded-full px-2.5 py-0.5 text-[11px] uppercase tracking-wider transition-colors",
@@ -303,6 +298,7 @@ export function DestinationsGrid({
             Themes:
           </span>
           <button
+            aria-pressed={selectedTag === "all"}
             onClick={() => setSelectedTag("all")}
             className={cn(
               "rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider transition-colors",
@@ -314,6 +310,7 @@ export function DestinationsGrid({
           {allTags.map((t) => (
             <button
               key={t}
+              aria-pressed={selectedTag === t}
               onClick={() => setSelectedTag(selectedTag === t ? "all" : t)}
               className={cn(
                 "rounded-full border px-2.5 py-0.5 text-[10px] uppercase tracking-wider transition-all",
@@ -328,17 +325,16 @@ export function DestinationsGrid({
         </div>
       </div>
 
+      </details>
       {/* Grid Results */}
       <div className="mt-8">
         <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
-          <span>Showing {filteredPlaces.length} destinations</span>
+          <span role="status" aria-live="polite">{filteredPlaces.length} {filteredPlaces.length === 1 ? "destination" : "destinations"}{searchQuery.trim() ? " matching “" + searchQuery.trim() + "”" : " to discover"}</span>
           {(category !== "all" || selectedRegion !== "all" || selectedTag !== "all" || searchQuery) && (
             <button
               onClick={() => {
-                setCategory("all");
-                setSelectedRegion("all");
-                setSelectedTag("all");
-                setSearchQuery("");
+                if (filters && onFiltersChange) onFiltersChange({ category: "all", selectedRegion: "all", selectedTag: "all", searchQuery: "" });
+                else { setInternalCategory("all"); setInternalRegion("all"); setInternalTag("all"); setInternalQuery(""); }
               }}
               className="text-primary hover:underline"
             >
@@ -364,11 +360,12 @@ export function DestinationsGrid({
             ))}
           </div>
         ) : filteredPlaces.length > 0 ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredPlaces.map((place) => (
+          <div className="destination-editorial-grid">
+            {filteredPlaces.map((place, index) => (
               <PlaceCard
                 key={place.id}
                 place={place}
+                featured={index === 0 && category === "all" && selectedRegion === "all" && selectedTag === "all" && !searchQuery.trim() && filteredPlaces.length >= 3}
                 onSelect={onSelectPlace}
               />
             ))}
@@ -390,3 +387,5 @@ export function DestinationsGrid({
 </main>
   );
 }
+
+

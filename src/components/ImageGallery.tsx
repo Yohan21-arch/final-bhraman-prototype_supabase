@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import {
   Camera,
   Search,
@@ -22,6 +22,7 @@ import {
 import { getAllGalleryImages, filterGalleryImages, type GalleryFilters } from "@/lib/gallery";
 import { allTags } from "@/data/places";
 import { REGION_NAMES } from "@/data/states";
+import { DestinationPhoto } from "@/components/DestinationPhoto";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { useTripList } from "@/lib/trip-list";
 import type { Place, StateData, Region, Category, Tag, GalleryImage } from "@/types";
@@ -30,30 +31,37 @@ import { cn } from "@/lib/utils";
 type ViewMode = "grid" | "masonry" | "cinematic";
 type SortOption = "curated" | "state" | "name";
 
+export interface GalleryViewState { filters: GalleryFilters; viewMode: ViewMode; sortBy: SortOption }
+export const DEFAULT_GALLERY_VIEW: GalleryViewState = { filters: { region: "all", category: "all", tag: "all", searchQuery: "" }, viewMode: "grid", sortBy: "curated" };
+
 export function ImageGallery({
   places,
   onSelectPlace,
   onSelectState,
   onAskYatra,
   compact = false,
+  view, onViewChange,
 }: {
   places?: Place[];
   onSelectPlace: (place: Place) => void;
   onSelectState: (state: StateData) => void;
   onAskYatra?: (prompt: string) => void;
   compact?: boolean;
+  view?: GalleryViewState; onViewChange?: (view: GalleryViewState) => void;
 }) {
   const allImages = useMemo(() => getAllGalleryImages(places), [places]);
 
-  const [filters, setFilters] = useState<GalleryFilters>({
-    region: "all",
-    category: "all",
-    tag: "all",
-    searchQuery: "",
-  });
-
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
-  const [sortBy, setSortBy] = useState<SortOption>("curated");
+  const reduceMotion = useReducedMotion();
+  const [internalView, setInternalView] = useState<GalleryViewState>(DEFAULT_GALLERY_VIEW);
+  const currentView = view || internalView;
+  const { filters, viewMode, sortBy } = currentView;
+  const updateView = (change: Partial<GalleryViewState>) => {
+    const next = { ...currentView, ...change };
+    setInternalView(next); onViewChange?.(next);
+  };
+  const setFilters = (next: GalleryFilters | ((previous: GalleryFilters) => GalleryFilters)) => updateView({ filters: typeof next === "function" ? next(filters) : next });
+  const setViewMode = (viewMode: ViewMode) => updateView({ viewMode });
+  const setSortBy = (sortBy: SortOption) => updateView({ sortBy });
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const { has, toggle } = useTripList();
@@ -104,9 +112,9 @@ export function ImageGallery({
   ];
 
   return (
-    <div className={cn("space-y-8", !compact ? "mx-auto max-w-7xl px-4 pb-28 pt-6 md:px-8" : "w-full pt-4")}>
+    <div className={cn("destination-gallery space-y-8", !compact ? "mx-auto max-w-7xl px-4 pb-28 pt-6 md:px-8" : "w-full pt-4")}>
       {/* Editorial Hero Header */}
-      <section className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-b from-card via-card/80 to-secondary/30 p-6 md:p-10 shadow-2xl grain">
+      <section hidden={compact} className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-b from-card via-card/80 to-secondary/30 p-6 md:p-10 shadow-2xl grain">
         <div className="relative z-10 max-w-3xl space-y-4">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3.5 py-1 text-xs uppercase tracking-[0.2em] text-primary font-semibold backdrop-blur-md">
             <Camera className="size-3.5" />
@@ -144,6 +152,7 @@ export function ImageGallery({
           </div>
         </div>
       </section>
+      {compact && <button onClick={handleRandomPhoto} className="brand-button brand-button-secondary"><Dices className="size-4 text-primary" />Surprise photograph</button>}
 
       {/* Filter and Search Bar */}
       <section className="space-y-4 rounded-2xl border border-border/70 bg-card/60 p-4 md:p-6 backdrop-blur-xl shadow-lg">
@@ -153,7 +162,7 @@ export function ImageGallery({
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
             <input
-              type="text"
+              type="search" aria-label="Search destination photographs"
               value={filters.searchQuery}
               onChange={(e) =>
                 setFilters((prev) => ({ ...prev, searchQuery: e.target.value }))
@@ -176,6 +185,7 @@ export function ImageGallery({
             {/* Category Toggle */}
             <div className="inline-flex rounded-full border border-border/80 bg-background p-1 text-xs">
               <button
+                aria-pressed={filters.category === "all"}
                 onClick={() => setFilters((prev) => ({ ...prev, category: "all" }))}
                 className={cn(
                   "rounded-full px-3 py-1 text-xs font-medium transition-colors",
@@ -187,6 +197,7 @@ export function ImageGallery({
                 All ({allImages.length})
               </button>
               <button
+                aria-pressed={filters.category === "iconic"}
                 onClick={() => setFilters((prev) => ({ ...prev, category: "iconic" }))}
                 className={cn(
                   "rounded-full px-3 py-1 text-xs font-medium transition-colors",
@@ -198,6 +209,7 @@ export function ImageGallery({
                 Iconic
               </button>
               <button
+                aria-pressed={filters.category === "hidden"}
                 onClick={() => setFilters((prev) => ({ ...prev, category: "hidden" }))}
                 className={cn(
                   "rounded-full px-3 py-1 text-xs font-medium transition-colors",
@@ -212,6 +224,7 @@ export function ImageGallery({
 
             {/* Sort Selector */}
             <select
+              aria-label="Sort photographs"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortOption)}
               className="rounded-full border border-border/80 bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none cursor-pointer"
@@ -224,6 +237,7 @@ export function ImageGallery({
             {/* View Mode Toggles */}
             <div className="hidden sm:inline-flex rounded-full border border-border/80 bg-background p-1">
               <button
+                aria-pressed={viewMode === "grid"}
                 onClick={() => setViewMode("grid")}
                 title="Standard Grid (4:3)"
                 className={cn(
@@ -236,6 +250,7 @@ export function ImageGallery({
                 <Grid3X3 className="size-3.5" />
               </button>
               <button
+                aria-pressed={viewMode === "masonry"}
                 onClick={() => setViewMode("masonry")}
                 title="Masonry Gallery"
                 className={cn(
@@ -248,6 +263,7 @@ export function ImageGallery({
                 <Columns3 className="size-3.5" />
               </button>
               <button
+                aria-pressed={viewMode === "cinematic"}
                 onClick={() => setViewMode("cinematic")}
                 title="Cinematic Widescreen View"
                 className={cn(
@@ -272,7 +288,7 @@ export function ImageGallery({
             const isActive = filters.region === reg.id;
             return (
               <button
-                key={reg.id}
+                key={reg.id} aria-pressed={isActive}
                 onClick={() => setFilters((prev) => ({ ...prev, region: reg.id }))}
                 className={cn(
                   "shrink-0 rounded-full px-3 py-1 font-medium transition-all cursor-pointer",
@@ -293,6 +309,7 @@ export function ImageGallery({
             Theme:
           </span>
           <button
+            aria-pressed={filters.tag === "all"}
             onClick={() => setFilters((prev) => ({ ...prev, tag: "all" }))}
             className={cn(
               "shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors cursor-pointer",
@@ -307,7 +324,7 @@ export function ImageGallery({
             const isActive = filters.tag === tag;
             return (
               <button
-                key={tag}
+                key={tag} aria-pressed={isActive}
                 onClick={() => setFilters((prev) => ({ ...prev, tag }))}
                 className={cn(
                   "shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors cursor-pointer",
@@ -377,10 +394,10 @@ export function ImageGallery({
             return (
               <motion.article
                 key={img.id}
-                layout
-                initial={{ opacity: 0, y: 15 }}
+                layout={!reduceMotion}
+                initial={reduceMotion ? false : { opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, delay: Math.min(idx * 0.02, 0.3) }}
+                transition={{ duration: reduceMotion ? 0 : 0.25 }}
                 className={cn(
                   "group relative overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm hover:border-primary/60 hover:shadow-xl transition-all duration-300",
                   viewMode === "masonry" && "break-inside-avoid mb-5"
@@ -388,6 +405,9 @@ export function ImageGallery({
               >
                 {/* Photo Stage */}
                 <div
+                  role="button" tabIndex={0} aria-label={"Open photograph of " + img.placeName}
+                  id={"gallery-photo-" + img.id}
+                  onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setLightboxIndex(idx); } }}
                   onClick={() => setLightboxIndex(idx)}
                   className={cn(
                     "relative overflow-hidden bg-secondary cursor-pointer",
@@ -396,14 +416,7 @@ export function ImageGallery({
                     viewMode === "masonry" && (idx % 3 === 0 ? "aspect-[3/4]" : "aspect-[4/3]")
                   )}
                 >
-                  <img
-                    src={img.url}
-                    alt={`${img.placeName} in ${img.stateName}`}
-                    referrerPolicy="no-referrer"
-                    loading="lazy"
-                    decoding="async"
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
+                  <DestinationPhoto sources={[img.url]} alt={img.placeName + " in " + img.stateName} className="h-full w-full" />
 
                   {/* Gradient Overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30 opacity-70 group-hover:opacity-85 transition-opacity" />
@@ -475,7 +488,7 @@ export function ImageGallery({
                         toggle(img.placeId);
                       }}
                       title={isSaved ? "Remove from saved list" : "Save destination"}
-                      aria-label="Bookmark destination"
+                      aria-pressed={isSaved} aria-label={(isSaved ? "Remove saved destination: " : "Save destination: ") + img.placeName}
                       className={cn(
                         "flex size-7 items-center justify-center rounded-full border transition-colors cursor-pointer",
                         isSaved
@@ -491,6 +504,8 @@ export function ImageGallery({
                         e.stopPropagation();
                         onSelectPlace(img.place);
                       }}
+                      id={"gallery-explore-" + img.id}
+                      aria-label={"Explore " + img.placeName}
                       title="Explore destination guide"
                       className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer"
                     >
@@ -518,3 +533,5 @@ export function ImageGallery({
     </div>
   );
 }
+
+

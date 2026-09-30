@@ -1,27 +1,12 @@
 import { useState, useEffect, useMemo, type ReactNode } from "react";
-import {
-  ArrowLeft,
-  Bookmark,
-  BookmarkCheck,
-  Calendar,
-  Compass,
-  Info,
-  Lightbulb,
-  MapPin,
-  Route as RouteIcon,
-  Share2,
-  Check,
-  Sparkles,
-  Layers,
-  X,
-  Camera,
-  ExternalLink,
-  Maximize2,
-} from "lucide-react";
+import { useReducedMotion } from "motion/react";
+import { ArrowLeft, ArrowRight, Bookmark, BookmarkCheck, Calendar, Compass, Info, Lightbulb, MapPin, Route, Share2, Check, Sparkles, X, Camera, ExternalLink } from "lucide-react";
 import type { Place, StateData } from "@/types";
 import { stateById } from "@/data/states";
 import { relatedPlaces } from "@/data/places";
-import { PlaceCard, PlaceImage } from "@/components/PlaceCard";
+import { PlaceCard } from "@/components/PlaceCard";
+import { DestinationPhoto } from "@/components/DestinationPhoto";
+import { DestinationSectionNav, type DestinationSection } from "@/components/DestinationSectionNav";
 import { LocalTravelTips } from "@/components/LocalTravelTips";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { PlaceTourGuideSection } from "@/components/PlaceTourGuideSection";
@@ -31,532 +16,137 @@ import { getPlaceGalleryImages } from "@/lib/gallery";
 import { useTripList } from "@/lib/trip-list";
 import { useAuth } from "@/contexts/AuthContext";
 import { userAccountService } from "@/services/userAccountService";
-import { cn } from "@/lib/utils";
 
-export function PlaceDetail({
-  place,
-  onBack,
-  onClose,
-  backLabel = "Back",
-  onSelectPlace,
-  onSelectState,
-  onAskYatra,
-}: {
-  place: Place;
-  onBack: () => void;
-  onClose?: () => void;
-  backLabel?: string;
-  onSelectPlace: (place: Place) => void;
-  onSelectState: (state: StateData) => void;
-  onAskYatra?: (query: string) => void;
+export function PlaceDetail({ place, onBack, onClose, backLabel = "Back", onSelectPlace, onSelectState, onAskYatra, onPlanTrip, section = "overview", onSectionChange }: {
+  place: Place; onBack: () => void; onClose?: () => void; backLabel?: string;
+  onSelectPlace: (place: Place) => void; onSelectState: (state: StateData) => void;
+  onAskYatra?: (query: string) => void; onPlanTrip?: () => void;
+  section?: DestinationSection; onSectionChange?: (section: DestinationSection) => void;
 }) {
   const state = stateById(place.state);
+  const reduceMotion = useReducedMotion();
   const { user } = useAuth();
   const { has, toggle, items, updateNotes } = useTripList();
+  const [internalSection, setInternalSection] = useState<DestinationSection>("overview");
+  const currentSection = onSectionChange ? section : internalSection;
   const [activeImage, setActiveImage] = useState(0);
+  const [displayedImage, setDisplayedImage] = useState<number | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
-  const [notesInput, setNotesInput] = useState(() => {
-    const found = items.find((i) => i.placeId === place.id);
-    return found?.notes || "";
-  });
+  const [notice, setNotice] = useState("");
+  const [notesInput, setNotesInput] = useState(() => items.find(i => i.placeId === place.id)?.notes || "");
   const [noteSaved, setNoteSaved] = useState(false);
-
   const galleryImages = useMemo(() => getPlaceGalleryImages(place), [place]);
   const isSaved = has(place.id);
   const related = relatedPlaces(place);
+  const currentAttr = displayedImage === null ? null : place.imageAttributions?.[displayedImage] || place.imageAttributions?.[0];
 
+  const changeSection = (next: DestinationSection) => {
+    setInternalSection(next); onSectionChange?.(next);
+    document.getElementById("destination-content")?.scrollIntoView({ block: "start", behavior: reduceMotion ? "instant" : "smooth" });
+  };
   const handleBookmarkToggle = async () => {
-    const willBeSaved = !isSaved;
-    toggle(place.id);
+    toggle(place.id); setNotice("");
     if (user) {
-      if (willBeSaved) {
-        await userAccountService.addSavedDestination(user.id, place.id);
-      } else {
-        await userAccountService.removeSavedDestination(user.id, place.id);
-      }
+      try {
+        if (!isSaved) await userAccountService.addSavedDestination(user.id, place.id);
+        else await userAccountService.removeSavedDestination(user.id, place.id);
+      } catch { setNotice("Your list is updated on this device. Cloud sync is unavailable."); }
     }
   };
-
-  // Keyboard shortcut: Escape to go back / close
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if typing in a textarea or input
-      const activeEl = document.activeElement;
-      const isInput = activeEl?.tagName === "INPUT" || activeEl?.tagName === "TEXTAREA";
-      if (e.key === "Escape" && !isInput) {
-        if (onClose) {
-          onClose();
-        } else {
-          onBack();
-        }
-      }
+    const handler = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || lightboxIndex !== null || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+      const target = event.target as HTMLElement;
+      if (event.key === "Escape" && !["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) (onClose || onBack)();
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onBack, onClose]);
-
-  const handleShare = () => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.href);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onBack, onClose, lightboxIndex]);
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true); setTimeout(() => setCopied(false), 2000);
+    } catch { setNotice("Copy the destination link from your browser address bar."); }
   };
+  const askToPlan = () => onAskYatra?.("Help me plan a visit to " + place.name + " in " + (state?.name || "India") + ". Ask about my dates, starting city, interests and budget.");
+  const panel = (id: DestinationSection, children: ReactNode) => <section id={"destination-section-" + id} role="tabpanel" tabIndex={0} aria-labelledby={"destination-tab-" + id} hidden={currentSection !== id} className="destination-section">{children}</section>;
 
-  const handleSaveNotes = () => {
-    updateNotes(place.id, notesInput);
-    setNoteSaved(true);
-    setTimeout(() => setNoteSaved(false), 2000);
-  };
-
-  return (
-    <main className="min-h-screen pb-28">
-      {/* Top Floating / Sticky Navigation Bar */}
-      <nav
-        id="destination-sticky-nav"
-        aria-label="Destination navigation"
-        className="sticky top-16 z-30 flex items-center justify-between border-b border-border/80 bg-background/95 px-3.5 py-2.5 backdrop-blur-xl md:px-8 shadow-sm transition-all"
-      >
-        {/* Clearly Visible Top-Left Back Button */}
-        <button
-          id="destination-back-btn"
-          onClick={onBack}
-          aria-label={backLabel ? `${backLabel} (Press Esc to go back)` : "Go back to previous page (Esc)"}
-          title={backLabel ? `${backLabel} (Esc)` : "Go back (Esc)"}
-          className="group inline-flex min-h-[44px] items-center gap-1.5 sm:gap-2 rounded-full border border-border/90 bg-card/90 px-3 sm:px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] sm:tracking-[0.14em] text-foreground shadow-xs transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 cursor-pointer shrink-0"
-        >
-          <ArrowLeft className="size-4 shrink-0 transition-transform group-hover:-translate-x-1" />
-          <span className="truncate max-w-[90px] xs:max-w-[160px] sm:max-w-xs">{backLabel}</span>
-        </button>
-
-        {/* Action Controls & Top-Right Close Button */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-          {onAskYatra && (
-            <button
-              onClick={() =>
-                onAskYatra(
-                  `Tell me more about visiting ${place.name} in ${state?.name || "India"} — best time, nearby hidden spots, and tips for booking.`
-                )
-              }
-              aria-label="Ask Yatra AI for travel guidance"
-              className="hidden sm:inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-[#F2A93B]/50 bg-[#17233D] px-3.5 py-2 text-xs font-semibold text-[#F2A93B] hover:bg-[#101A30] transition-colors shadow-xs"
-            >
-              <Sparkles className="size-3.5 text-[#F2A93B]" />
-              <span>Ask Yatra</span>
-            </button>
-          )}
-
-          <button
-            onClick={handleShare}
-            aria-label="Share destination link"
-            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-border bg-card/80 px-2.5 sm:px-3.5 py-2 text-xs text-muted-foreground hover:border-primary hover:text-foreground transition-colors cursor-pointer shrink-0"
-          >
-            {copied ? <Check className="size-3.5 text-green-400" /> : <Share2 className="size-3.5" />}
-            <span className="hidden sm:inline">{copied ? "Link Copied" : "Share"}</span>
-          </button>
-
-          <button
-            onClick={handleBookmarkToggle}
-            aria-label={isSaved ? "Remove from saved list" : "Save destination"}
-            className={cn(
-              "inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-3 sm:px-4 py-2 text-xs uppercase tracking-[0.12em] sm:tracking-[0.14em] font-semibold transition-all cursor-pointer shrink-0",
-              isSaved
-                ? "bg-primary text-primary-foreground shadow-md"
-                : "border border-primary/50 text-primary hover:bg-primary/10"
-            )}
-          >
-            {isSaved ? <BookmarkCheck className="size-3.5" /> : <Bookmark className="size-3.5" />}
-            <span className="hidden sm:inline">{isSaved ? "Saved" : "Save"}</span>
-          </button>
-
-          {/* Clearly Visible Top-Right Close Button (✕) */}
-          <button
-            id="destination-close-btn"
-            onClick={onClose || onBack}
-            aria-label="Close destination details (Esc)"
-            title="Close destination details (Esc)"
-            className="inline-flex size-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-border/90 bg-card/90 text-foreground transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95 shadow-xs cursor-pointer shrink-0"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-      </nav>
-
-      {/* Hero Visual Section */}
-      <section className="relative h-[55vh] min-h-[420px] max-h-[640px] w-full overflow-hidden bg-secondary">
-        <PlaceImage
-          place={{ ...place, images: place.images.length ? [place.images[activeImage] || place.images[0]!] : [] }}
-          priority
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-black/30" />
-
-        <div className="absolute inset-x-0 bottom-0 mx-auto max-w-5xl px-4 pb-8 md:px-8">
-          <div className="flex flex-wrap items-center gap-2.5">
-            {state && (
-              <button
-                onClick={() => onSelectState(state)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-background/70 px-3.5 py-1 text-[11px] uppercase tracking-[0.16em] text-foreground backdrop-blur-md transition-colors hover:border-primary hover:text-primary"
-              >
-                <MapPin className="size-3 text-primary" />
-                {state.name}
-              </button>
-            )}
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.16em] backdrop-blur-md",
-                place.category === "hidden"
-                  ? "border border-primary/50 bg-primary/20 text-primary font-medium"
-                  : "border border-border bg-secondary/80 text-muted-foreground"
-              )}
-            >
-              {place.category === "hidden" ? (
-                <>
-                  <Sparkles className="size-3" /> Off the Beaten Path
-                </>
-              ) : (
-                <>
-                  <Layers className="size-3" /> Iconic Landmark
-                </>
-              )}
-            </span>
-          </div>
-
-          <h1 className="display-font mt-2 sm:mt-3 text-2xl xs:text-3xl sm:text-5xl md:text-6xl font-bold leading-[1.05] text-foreground">
-            {place.name}
-          </h1>
-          <p className="mt-2 sm:mt-3 max-w-2xl text-xs sm:text-sm md:text-base leading-relaxed text-muted-foreground line-clamp-3 sm:line-clamp-none">
-            {place.shortDesc}
-          </p>
-        </div>
-
-        <div className="absolute top-3.5 right-3.5 sm:top-auto sm:bottom-6 sm:right-8 flex items-center gap-1.5 sm:gap-2 z-10">
-          <button
-            onClick={() => setLightboxIndex(activeImage)}
-            className="inline-flex items-center gap-1 sm:gap-1.5 rounded-full border border-border/80 bg-background/80 px-2.5 sm:px-3.5 py-1 text-[11px] sm:text-xs font-semibold text-foreground backdrop-blur-md hover:border-primary hover:text-primary transition-all shadow-md cursor-pointer"
-          >
-            <Camera className="size-3 sm:size-3.5 text-primary" />
-            <span>Gallery ({place.images.length})</span>
-          </button>
-
-          {place.images.length > 1 && (
-            <div className="flex gap-2 bg-background/60 p-1.5 rounded-full backdrop-blur-md border border-border/70">
-              {place.images.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveImage(i)}
-                  aria-label={`View photo ${i + 1}`}
-                  className={cn(
-                    "size-2.5 rounded-full transition-all",
-                    i === activeImage ? "bg-primary scale-125" : "bg-foreground/40 hover:bg-foreground/70"
-                  )}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Verified Photograph Attribution & Licensing Bar */}
-      {(() => {
-        const currentAttr = place.imageAttributions?.[activeImage] || place.imageAttributions?.[0];
-        if (!currentAttr) return null;
-        return (
-          <div className="border-b border-border/60 bg-secondary/30 px-4 py-2.5 text-xs text-muted-foreground md:px-8">
-            <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2.5">
-              <div className="flex items-center gap-2">
-                <Camera className="size-3.5 text-primary shrink-0" />
-                <span className="leading-tight">
-                  <strong className="font-semibold text-foreground">Authentic Photo:</strong>{" "}
-                  {currentAttr.title || place.name}
-                  {currentAttr.author && (
-                    <> &bull; Contributor: <span className="text-foreground/90 font-medium">{currentAttr.author}</span></>
-                  )}
-                  {currentAttr.license && (
-                    <> &bull; <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-foreground/80">{currentAttr.license}</span></>
-                  )}
-                </span>
-              </div>
-              {currentAttr.sourceUrl && (
-                <a
-                  href={currentAttr.sourceUrl}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
-                >
-                  <span>{currentAttr.sourceName || "Wikimedia Commons"}</span>
-                  <ExternalLink className="size-3" />
-                </a>
-              )}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Main Content Layout */}
-      <div className="mx-auto max-w-5xl space-y-12 px-4 pt-10 md:px-8">
-        <section className="grid gap-8 md:grid-cols-[1.5fr_1fr]">
-          <div className="space-y-6">
-            <div>
-              <p className="eyebrow">The Experience & Story</p>
-              <h2 className="display-font mt-1 text-2xl font-semibold text-foreground">Why Visit</h2>
-              <p className="mt-3 text-base leading-relaxed text-foreground/90 font-sans">
-                {place.whyVisit}
-              </p>
-            </div>
-
-            <div className="pt-2">
-              <p className="eyebrow mb-2.5">Travel Themes & Highlights</p>
-              <div className="flex flex-wrap gap-2">
-                {place.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full border border-border/80 bg-secondary/50 px-3 py-1 text-xs uppercase tracking-[0.12em] text-foreground/80"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Traveler Notes Box if saved */}
-            {isSaved && (
-              <div className="rounded-xl border border-primary/30 bg-secondary/30 p-5 space-y-3">
-                <p className="eyebrow flex items-center gap-1.5 text-primary">
-                  <Bookmark className="size-3.5" /> Your Personal Itinerary Notes
-                </p>
-                <textarea
-                  value={notesInput}
-                  onChange={(e) => setNotesInput(e.target.value)}
-                  placeholder="E.g. Book sunrise slot at 6 AM, try the local masala chai, bring wide angle lens..."
-                  rows={2}
-                  className="w-full rounded-lg border border-border bg-background/80 p-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
-                />
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-muted-foreground">
-                    Saved in your local Bhraman list
-                  </span>
-                  <button
-                    onClick={handleSaveNotes}
-                    className="inline-flex items-center gap-1 rounded-md bg-primary/20 hover:bg-primary/30 text-primary border border-primary/40 px-3 py-1 text-xs uppercase tracking-wider font-semibold transition-colors"
-                  >
-                    {noteSaved ? <Check className="size-3" /> : null}
-                    {noteSaved ? "Note Saved" : "Save Note"}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Practical Info Sidebar */}
-          <aside className="space-y-6 rounded-xl border border-border bg-card p-6 shadow-lg">
-            <h3 className="display-font text-lg font-semibold text-foreground border-b border-border/60 pb-3">
-              Essential Travel Logistics
-            </h3>
-
-            <DetailItem
-              icon={<Calendar className="size-4" />}
-              label="Best Season & Timing"
-              body={place.bestTimeToVisit}
-            />
-
-            <DetailItem
-              icon={<RouteIcon className="size-4" />}
-              label="How to Reach"
-              body={place.howToReach}
-            />
-
-            <DetailItem
-              icon={<Info className="size-4" />}
-              label="Entry Passes & Operational Info"
-              body={place.entryInfo}
-            />
-
-            <DetailItem
-              icon={<Compass className="size-4" />}
-              label="Coordinates"
-              body={`${place.coordinates.lat.toFixed(4)}° N, ${place.coordinates.lng.toFixed(4)}° E`}
-            />
-          </aside>
-        </section>
-
-        {/* Quick-Access Collapsible Local Travel Tips */}
-        <LocalTravelTips
-          place={place}
-          state={state}
-          onAskYatra={onAskYatra}
-          defaultExpanded={true}
-        />
-
-        {/* Golden Editorial Traveler Tip */}
-        <section className="rounded-xl border border-primary/40 bg-gradient-to-br from-primary/[0.08] to-transparent p-6 md:p-8">
-          <p className="eyebrow flex items-center gap-2 text-primary font-semibold">
-            <Lightbulb className="size-4 text-primary" /> Curated Field Tip
-          </p>
-          <p className="mt-3 text-sm md:text-base leading-relaxed text-foreground/90 italic">
-            &ldquo;{place.travelerTip}&rdquo;
-          </p>
-        </section>
-
-        {/* Authentic Photographic Gallery Section */}
-        {galleryImages.length > 0 && (
-          <section className="space-y-6 rounded-2xl border border-border/70 bg-card/60 p-6 md:p-8 shadow-md">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-4">
-              <div>
-                <p className="eyebrow flex items-center gap-1.5 text-primary font-semibold">
-                  <Camera className="size-3.5" /> Visual Archive
-                </p>
-                <h3 className="display-font text-2xl font-bold text-foreground">
-                  Photo Gallery of {place.name}
-                </h3>
-              </div>
-              <button
-                onClick={() => setLightboxIndex(0)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-primary/60 bg-primary/10 px-4 py-2 text-xs font-bold uppercase tracking-wider text-primary hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer shadow-xs"
-              >
-                <Maximize2 className="size-3.5" />
-                <span>Fullscreen Lightbox ({galleryImages.length})</span>
-              </button>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-              {galleryImages.map((img, idx) => (
-                <div
-                  key={img.id}
-                  onClick={() => setLightboxIndex(idx)}
-                  className="group relative overflow-hidden rounded-xl border border-border/70 bg-secondary/80 aspect-[4/3] cursor-pointer hover:border-primary/70 hover:shadow-lg transition-all"
-                >
-                  <img
-                    src={img.url}
-                    alt={img.attribution?.title || img.placeName}
-                    referrerPolicy="no-referrer"
-                    loading="lazy"
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-85 transition-opacity" />
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
-                      <Maximize2 className="size-4" />
-                    </div>
-                  </div>
-                  <div className="absolute bottom-2.5 inset-x-2.5 z-10">
-                    <p className="text-xs font-semibold text-white truncate drop-shadow-sm">
-                      {img.attribution?.title || `Photograph ${idx + 1}`}
-                    </p>
-                    {img.attribution?.author && (
-                      <p className="text-[10px] text-white/70 truncate">
-                        By {img.attribution.author}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Verified Tour Guides & Government ASI Rates Section */}
-        <PlaceTourGuideSection
-          place={place}
-          onAskYatra={onAskYatra}
-        />
-
-        {/* Real Nearby Accommodations via Google Places API */}
-        <NearbyHotelsSection
-          place={place}
-          onAskYatra={onAskYatra}
-        />
-
-        {/* Traveler Reviews & Value Price Ratings Section */}
-        <ReviewsSection
-          place={place}
-          onAskYatra={onAskYatra}
-        />
-
-        {/* More Like This */}
-        {related.length > 0 && (
-          <section className="space-y-6 pt-6 border-t border-border/60">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="eyebrow">Discover Further</p>
-                <h3 className="display-font text-2xl font-bold text-foreground">
-                  More Destinations You May Like
-                </h3>
-              </div>
-            </div>
-
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {related.map((item) => (
-                <PlaceCard
-                  key={item.id}
-                  place={item}
-                  onSelect={onSelectPlace}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Bottom Call to Action */}
-        <section className="flex flex-col items-center gap-4 border-t border-border/80 pt-10 text-center">
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <button
-              onClick={onBack}
-              aria-label={backLabel ? `${backLabel} (Esc)` : "Go back"}
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-border/90 bg-card/90 px-6 py-3 text-xs uppercase tracking-[0.16em] font-semibold text-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-md active:scale-95 cursor-pointer"
-            >
-              <ArrowLeft className="size-4" />
-              <span>{backLabel}</span>
-            </button>
-
-            <button
-              onClick={() => toggle(place.id)}
-              className={cn(
-                "inline-flex min-h-[44px] items-center gap-2 rounded-full px-8 py-3 text-xs uppercase tracking-[0.18em] font-semibold transition-all shadow-lg cursor-pointer",
-                isSaved
-                  ? "border border-primary/80 bg-primary/20 text-primary hover:bg-primary/30"
-                  : "bg-primary text-primary-foreground hover:opacity-90 hover:shadow-primary/20"
-              )}
-            >
-              {isSaved ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
-              {isSaved ? "Saved to My Bhraman List" : "Add to My Bhraman List"}
-            </button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Access your curated saved destinations anytime from the top navigation.
-          </p>
-        </section>
+  return <main className="destination-detail pb-24">
+    <nav id="destination-sticky-nav" className="destination-actions" aria-label="Destination navigation">
+      <button id="destination-back-btn" className="brand-button brand-button-secondary destination-back" onClick={onBack} aria-label={backLabel + " (Press Esc to go back)"}><ArrowLeft className="size-4 shrink-0" /><span>{backLabel}</span></button>
+      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+        {onAskYatra && <button className="brand-button brand-button-secondary hidden sm:inline-flex" onClick={askToPlan}><Sparkles className="size-4 text-primary" />Ask Yatra</button>}
+        <button className="destination-icon-button" onClick={handleShare} aria-label="Share destination link">{copied ? <Check className="size-4" /> : <Share2 className="size-4" />}</button>
+        <button className="destination-icon-button" onClick={handleBookmarkToggle} aria-label={isSaved ? "Remove from saved list" : "Save destination"} aria-pressed={isSaved}>{isSaved ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}</button>
+        <button id="destination-close-btn" className="destination-icon-button" onClick={onClose || onBack} aria-label="Close destination details (Esc)"><X className="size-4" /></button>
       </div>
+      <span className="sr-only" role="status">{copied ? "Destination link copied" : notice}</span>
+    </nav>
 
-      {lightboxIndex !== null && (
-        <ImageLightbox
-          images={galleryImages}
-          initialIndex={lightboxIndex}
-          onClose={() => setLightboxIndex(null)}
-          onAskYatra={onAskYatra}
-        />
-      )}
-    </main>
-  );
-}
-
-function DetailItem({
-  icon,
-  label,
-  body,
-}: {
-  icon: ReactNode;
-  label: string;
-  body: string;
-}) {
-  return (
-    <div>
-      <p className="eyebrow flex items-center gap-2 text-primary">
-        <span>{icon}</span>
-        {label}
-      </p>
-      <p className="mt-1.5 text-xs md:text-sm leading-relaxed text-foreground/85">{body}</p>
+    <header className="destination-hero site-container">
+      <div className="destination-hero-photo">
+        <DestinationPhoto sources={place.images || []} initialIndex={activeImage} onPhotoChange={setDisplayedImage} alt={place.name} priority className="h-full w-full" />
+        {galleryImages.length > 0 && <button id="destination-hero-gallery" className="brand-button brand-button-secondary destination-open-photo" onClick={() => setLightboxIndex(displayedImage ?? activeImage)}><Camera className="size-4" />View photographs <span>{galleryImages.length}</span></button>}
+      </div>
+      <div className="destination-hero-copy">
+        <div className="flex flex-wrap items-center gap-3">
+          {state && <button id="destination-state-link" className="destination-state-link" onClick={() => onSelectState(state)}><MapPin className="size-3.5" />{state.name}<ArrowRight className="size-3" /></button>}
+          <span className="eyebrow text-primary">{place.category === "hidden" ? "Off the beaten path" : "Iconic wonder"}</span>
+        </div>
+        <h1 className="display-font">{place.name}</h1>
+        <p>{place.shortDesc}</p>
+      </div>
+    </header>
+    <div className="site-container destination-photo-credit">
+      {currentAttr ? <p>{currentAttr.title || place.name}{currentAttr.author && <> · {currentAttr.author}</>}{currentAttr.license && <> · {currentAttr.license}</>}{currentAttr.sourceUrl && <a href={currentAttr.sourceUrl} target="_blank" rel="noreferrer noopener">{currentAttr.sourceName || "Photo source"}<ExternalLink className="size-3" /></a>}</p> : <p>Destination photography from the existing Bhraman archive.</p>}
     </div>
-  );
+
+    <DestinationSectionNav active={currentSection} onChange={changeSection} />
+    <div id="destination-content" className="site-container destination-content">
+      {panel("overview", <>
+        <div className="destination-overview">
+          <div>
+            <p className="eyebrow text-primary">The experience</p><h2 className="section-heading mt-3">Why this place stays with you.</h2>
+            <p className="destination-story">{place.whyVisit}</p>
+            <div className="destination-themes">{place.tags.map(tag => <span key={tag}>{tag}</span>)}</div>
+            <blockquote className="destination-field-tip"><Lightbulb className="size-5 text-primary shrink-0" /><div><p className="eyebrow text-primary mb-3">A note for your journey</p><p>{place.travelerTip}</p></div></blockquote>
+          </div>
+          <aside className="destination-essentials" aria-labelledby="destination-essentials-heading">
+            <p className="eyebrow text-primary">Before you go</p><h2 id="destination-essentials-heading" className="display-font text-2xl">The essentials.</h2>
+            <DetailItem icon={<Calendar className="size-4" />} label="Best time to visit" body={place.bestTimeToVisit} />
+            <DetailItem icon={<Route className="size-4" />} label="How to reach" body={place.howToReach} />
+            <DetailItem icon={<Info className="size-4" />} label="Entry information" body={place.entryInfo} />
+            <DetailItem icon={<Compass className="size-4" />} label="Coordinates" body={place.coordinates.lat.toFixed(4) + "° N, " + place.coordinates.lng.toFixed(4) + "° E"} />
+          </aside>
+        </div>
+        <section className="destination-planning">
+          <div><p className="eyebrow text-primary">From discovery to departure</p><h2 className="display-font mt-3 text-3xl">Make room for this journey.</h2><p className="section-copy">Keep this place in your list, gather the details, and start planning your visit.</p></div>
+          <div className="flex flex-wrap gap-3">
+            <button className="brand-button brand-button-primary" onClick={handleBookmarkToggle}>{isSaved ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}{isSaved ? "Saved to My Bhraman List" : "Add to My Bhraman List"}</button>
+            {onAskYatra && <button className="brand-button brand-button-secondary" onClick={askToPlan}><Sparkles className="size-4 text-primary" />Plan with Yatra</button>}
+            {onPlanTrip && <button id="destination-open-planner" className="brand-button brand-button-secondary" onClick={onPlanTrip}>Open trip planner<ArrowRight className="size-4" /></button>}
+          </div>
+          {isSaved && <div className="destination-notes"><label htmlFor="destination-notes" className="eyebrow text-primary">Your itinerary notes</label><textarea id="destination-notes" value={notesInput} onChange={e => { setNotesInput(e.target.value); setNoteSaved(false); }} rows={3} placeholder="Keep a reminder for your visit..." /><div className="flex items-center justify-between gap-3"><span className="text-xs text-muted-foreground">Stored in your local Bhraman list</span><button className="brand-button brand-button-secondary" onClick={() => { updateNotes(place.id, notesInput); setNoteSaved(true); }}>{noteSaved ? "Note saved" : "Save note"}</button></div><span role="status" className="sr-only">{noteSaved ? "Itinerary note saved" : ""}</span></div>}
+        </section>
+      </>)}
+      {panel("photos", <>
+        <p className="eyebrow text-primary">Through the lens</p><h2 className="section-heading mt-3">A closer look.</h2><p className="section-copy">Open a photograph to explore it in full, with its source and attribution.</p>
+        <div className="destination-photo-grid">{galleryImages.map((image, index) => <figure key={image.id}>
+          <button id={"destination-photo-" + index} className="destination-photo-button" aria-label={"Open photograph " + (index + 1) + ": " + (image.attribution?.title || place.name)} onClick={() => setLightboxIndex(index)}><DestinationPhoto sources={[image.url]} alt={image.attribution?.title || place.name} className="h-full w-full" /><Camera className="size-5" /></button>
+          <figcaption><p>{image.attribution?.title || place.name}</p><p>{image.attribution?.author}{image.attribution?.license && " · " + image.attribution.license}</p><button className="destination-text-link" onClick={() => { setActiveImage(index); setDisplayedImage(null); document.querySelector(".destination-hero")?.scrollIntoView({ behavior: reduceMotion ? "instant" : "smooth" }); }}>Use as cover photo</button></figcaption>
+        </figure>)}</div>
+        {!galleryImages.length && <p className="destination-empty">Photography is not available for this destination yet. Its travel information is available in Overview.</p>}
+      </>)}
+      {panel("tips", <><p className="eyebrow text-primary">Travel thoughtfully</p><h2 className="section-heading mt-3 mb-7">Local knowledge, a better journey.</h2><LocalTravelTips place={place} state={state} onAskYatra={onAskYatra} defaultExpanded={true} /></>)}
+      {panel("stay", <><p className="eyebrow text-primary">Shape your visit</p><h2 className="section-heading mt-3 mb-7">Stay nearby. Explore with insight.</h2><div className="space-y-10"><NearbyHotelsSection place={place} onAskYatra={onAskYatra} /><PlaceTourGuideSection place={place} onAskYatra={onAskYatra} /></div></>)}
+      {panel("reviews", <ReviewsSection place={place} onAskYatra={onAskYatra} />)}
+      {panel("discover", <><p className="eyebrow text-primary">Keep exploring</p><h2 className="section-heading mt-3">Where curiosity leads next.</h2><p className="section-copy">More destinations you may like.</p><div className="destination-related">{related.map(item => <PlaceCard key={item.id} place={item} onSelect={onSelectPlace} />)}</div>{!related.length && <p className="destination-empty">Return to the atlas to explore more destinations.</p>}{state && <button className="brand-button brand-button-secondary mt-6" onClick={() => onSelectState(state)}>Explore all of {state.name}<ArrowRight className="size-4" /></button>}</>)}
+    </div>
+    {lightboxIndex !== null && galleryImages.length > 0 && <ImageLightbox images={galleryImages} initialIndex={lightboxIndex} onClose={() => setLightboxIndex(null)} onAskYatra={onAskYatra} />}
+  </main>;
 }
+function DetailItem({ icon, label, body }: { icon: ReactNode; label: string; body: string }) {
+  return <div className="destination-detail-item"><span className="text-primary mt-1">{icon}</span><div><h3>{label}</h3><p>{body || "Details are not available yet."}</p></div></div>;
+}
+

@@ -20,6 +20,8 @@ import { Footer } from "@/components/Footer";
 import { ExplorerShell } from "@/components/ExplorerShell";
 import { DEFAULT_MAP_VIEW, fitState, type MapViewState } from "@/lib/map-camera";
 import { DEFAULT_PANEL_VIEW, type PanelViewState } from "@/components/StatePanel";
+import { DEFAULT_GALLERY_VIEW, type GalleryViewState } from "@/components/ImageGallery";
+import type { DestinationSection } from "@/components/DestinationSectionNav";
 import { PlaceDetail } from "@/components/PlaceDetail";
 import { StateGuide } from "@/components/StateGuide";
 import { TripListView } from "@/components/TripListView";
@@ -53,6 +55,7 @@ interface NavContextEntry {
   label: string;
   scrollY: number; focusId: string; mapView: MapViewState; panelView: PanelViewState;
   selectedRegion: Region | "all"; categoryFilter: "all" | "iconic" | "hidden";
+  galleryView?: GalleryViewState;
   gridFilters: DestinationsGridFilters; destinationSubView: "cards" | "gallery";
 }
 
@@ -105,6 +108,8 @@ function BhramanApp() {
     searchQuery: "",
   });
 
+  const [galleryView, setGalleryView] = useState<GalleryViewState>(DEFAULT_GALLERY_VIEW);
+  const [detailSections, setDetailSections] = useState<Record<string, DestinationSection>>({});
   const [mapView, setMapView] = useState<MapViewState>(DEFAULT_MAP_VIEW);
   const [panelView, setPanelView] = useState<PanelViewState>(DEFAULT_PANEL_VIEW);
   const pendingRestore = useRef<{ scrollY: number; focusId: string } | null>(null);
@@ -112,14 +117,15 @@ function BhramanApp() {
   const finishedView = useRef("");
   const captureContext = (label = "Back to Map"): NavContextEntry => ({
     tab: activeTab, place: activePlace, state: activeState, panelStateId, label,
-    scrollY: window.scrollY, focusId: document.activeElement?.id || "",
-    mapView, panelView, selectedRegion, categoryFilter, gridFilters, destinationSubView,
+    scrollY: window.scrollY, focusId: document.activeElement?.getAttribute("data-return-focus") || document.activeElement?.id || "",
+    mapView, panelView, selectedRegion, categoryFilter, gridFilters, destinationSubView, galleryView,
   });
   const restoreContext = (entry: NavContextEntry) => {
     pendingRestore.current = entry;
     setActiveTab(entry.tab); setActivePlace(entry.place); setActiveState(entry.state);
     setPanelStateId(entry.panelStateId); setMapView(entry.mapView); setPanelView(entry.panelView);
     setSelectedRegion(entry.selectedRegion); setCategoryFilter(entry.categoryFilter);
+    setGalleryView(entry.galleryView || DEFAULT_GALLERY_VIEW);
     setGridFilters(entry.gridFilters); setDestinationSubView(entry.destinationSubView);
   };
   const contextUrl = (entry: NavContextEntry) => entry.place ? "#/place/" + entry.place.id
@@ -135,7 +141,7 @@ function BhramanApp() {
     pendingRestore.current = null;
     window.scrollTo({ top: restore?.scrollY || 0, behavior: "instant" });
     const target = (restore?.focusId && document.getElementById(restore.focusId))
-      || document.getElementById(restore ? "india-explorer" : "main-content");
+      || document.getElementById(restore && activeTab === "map" && !activePlace && !activeState ? "india-explorer" : "main-content");
     target?.focus({ preventScroll: true });
   };
 
@@ -330,6 +336,9 @@ function BhramanApp() {
             {activePlace ? (
           <PlaceDetail
             place={activePlace}
+            section={detailSections[activePlace.id] || "overview"}
+            onSectionChange={section => setDetailSections(previous => ({ ...previous, [activePlace.id]: section }))}
+            onPlanTrip={() => handleSelectTab("planner")}
             backLabel={currentBackLabel}
             onBack={handleBack}
             onClose={handleClosePlace}
@@ -378,6 +387,7 @@ function BhramanApp() {
             error={placesError}
             onRetry={refreshDestinations}
             filters={gridFilters}
+            galleryView={galleryView} onGalleryViewChange={setGalleryView}
             onFiltersChange={setGridFilters}
             activeSubView={destinationSubView}
             onSubViewChange={(view) => {

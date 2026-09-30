@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
+import { useReducedMotion } from "motion/react";
 import {
   X,
   ChevronLeft,
@@ -35,6 +37,8 @@ export function ImageLightbox({
   onSelectPlace,
   onAskYatra,
 }: ImageLightboxProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const reduceMotion = useReducedMotion();
   const [currentIndex, setCurrentIndex] = useState(
     Math.max(0, Math.min(initialIndex, images.length - 1))
   );
@@ -70,27 +74,45 @@ export function ImageLightbox({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        e.preventDefault(); e.stopPropagation(); onClose();
       } else if (e.key === "ArrowRight") {
         handleNext();
       } else if (e.key === "ArrowLeft") {
         handlePrev();
-      } else if (e.key === " " && !e.repeat) {
+      } else if (e.key === " " && !e.repeat && e.target === dialogRef.current) {
         e.preventDefault();
         setIsZoomed((z) => !z);
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    const dialog = dialogRef.current;
+    dialog?.addEventListener("keydown", handleKeyDown);
+    return () => dialog?.removeEventListener("keydown", handleKeyDown);
   }, [onClose, handleNext, handlePrev]);
 
   // Prevent background body scroll while lightbox is open
   useEffect(() => {
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const root = document.getElementById("root");
+    const wasInert = root?.inert || false;
+    if (root) root.inert = true;
+    dialogRef.current?.querySelector<HTMLButtonElement>('[aria-label="Close photo viewer"]')?.focus();
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const controls = [...(dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], [tabindex="0"]') || [])].filter(el => el.getClientRects().length > 0);
+      const first = controls[0], last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    const dialog = dialogRef.current;
+    dialog?.addEventListener("keydown", trapFocus);
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = originalOverflow;
+      if (root) root.inert = wasInert;
+      dialog?.removeEventListener("keydown", trapFocus);
+      requestAnimationFrame(() => { if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true }); });
     };
   }, []);
 
@@ -102,13 +124,13 @@ export function ImageLightbox({
       );
       if (activeEl) {
         activeEl.scrollIntoView({
-          behavior: "smooth",
+          behavior: reduceMotion ? "instant" : "smooth",
           block: "nearest",
           inline: "center",
         });
       }
     }
-  }, [currentIndex]);
+  }, [currentIndex, reduceMotion]);
 
   const handleShare = () => {
     if (!currentImage) return;
@@ -122,12 +144,12 @@ export function ImageLightbox({
 
   if (!currentImage) return null;
 
-  return (
-    <div
+  return createPortal(
+    <div ref={dialogRef} tabIndex={-1}
       role="dialog"
       aria-modal="true"
       aria-label={`Photo viewer: ${currentImage.placeName}`}
-      className="fixed inset-0 z-50 flex flex-col bg-black/95 backdrop-blur-2xl text-foreground select-none animate-in fade-in duration-200"
+      className="destination-lightbox fixed inset-0 z-[80] flex flex-col bg-black/95 backdrop-blur-2xl text-foreground select-none animate-in fade-in duration-200"
     >
       {/* Top Header Controls Bar */}
       <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-4 md:px-8 bg-black/60 backdrop-blur-md z-20">
@@ -192,6 +214,7 @@ export function ImageLightbox({
                 onClose();
                 onSelectPlace(currentImage.place);
               }}
+              data-return-focus={"gallery-explore-" + currentImage.id}
               title="Open full guide for this destination"
               className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-primary/60 bg-primary/20 px-3.5 py-1.5 text-xs font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-all ml-1"
             >
@@ -345,6 +368,7 @@ export function ImageLightbox({
                   onClose();
                   onSelectPlace(currentImage.place);
                 }}
+                data-return-focus={"gallery-explore-" + currentImage.id}
                 className="sm:hidden inline-flex items-center gap-1 rounded-md bg-primary/20 px-2.5 py-1 text-[11px] font-semibold text-primary"
               >
                 <span>Explore Destination</span>
@@ -407,6 +431,8 @@ export function ImageLightbox({
           </div>
         )}
       </footer>
-    </div>
+    </div>, document.body
   );
 }
+
+
