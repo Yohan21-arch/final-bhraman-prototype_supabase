@@ -38,11 +38,11 @@ function commonsFilenameFromUrl(source: string): string | null {
   }
 }
 
-function proxyCommonsImage(source: string): string {
+function proxyCommonsImage(source: string, placeName: string): string {
   if (source.startsWith("/api/destination-photo?")) return source;
   const filename = commonsFilenameFromUrl(source);
   return filename
-    ? `/api/destination-photo?file=${encodeURIComponent(filename)}`
+    ? `/api/destination-photo?file=${encodeURIComponent(filename)}&q=${encodeURIComponent(placeName)}`
     : source;
 }
 
@@ -137,6 +137,6 @@ export function applyDestinationImageOverride(place: Place): Place {
 
   return {
     ...resolved,
-    images: (resolved.images || []).map(proxyCommonsImage),
+    images: (resolved.images || []).map((source) => proxyCommonsImage(source, place.name)),
   };
 }
