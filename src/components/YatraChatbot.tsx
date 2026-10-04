@@ -1,26 +1,22 @@
+import { createPortal } from "react-dom";
+import { useDialogFocus } from "@/lib/use-dialog-focus";
 import { useState, useRef, useEffect, type FormEvent } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import {
-  MessageSquare,
   X,
   Send,
-  Sparkles,
   Compass,
   MapPin,
-  Calendar,
-  Users,
-  Ticket,
   Copy,
   Check,
   RotateCcw,
   Maximize2,
   Minimize2,
-  ExternalLink,
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Place, StateData } from "@/types";
-import { PLACES_DATA, placesByState, getLoadedPlaces } from "@/data/places";
+import { getLoadedPlaces } from "@/data/places";
 import { STATES_DATA } from "@/data/states";
 import { useAuth } from "@/contexts/AuthContext";
 import { userAccountService } from "@/services/userAccountService";
@@ -80,6 +76,7 @@ interface YatraChatbotProps {
   initialPrompt?: string | null;
   onClearInitialPrompt?: () => void;
   places?: Place[];
+  contextPlace?: Place | null;
 }
 
 export function YatraChatbot({
@@ -87,9 +84,10 @@ export function YatraChatbot({
   onSelectState,
   initialPrompt,
   onClearInitialPrompt,
-  places,
+  places, contextPlace,
 }: YatraChatbotProps) {
   const { user } = useAuth();
+  const reduceMotion = useReducedMotion();
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [input, setInput] = useState("");
@@ -100,32 +98,28 @@ export function YatraChatbot({
       id: "initial-greeting",
       role: "assistant",
       content:
-        "Namaste! I'm Yatra 🙏 Tell me a destination you're curious about, tap a mood below, or say you'd like to book something — I'll take it from there.",
+        "Namaste. I'm Yatra, your India travel companion. Tell me what draws you to a place, and we'll shape a journey around it.",
     },
   ]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const sendingRef = useRef(false);
+  const dialogRef = useDialogFocus(isOpen, () => setIsOpen(false));
 
   useEffect(() => {
-    if (isOpen) {
-      scrollToBottom();
-      inputRef.current?.focus();
-    }
-  }, [isOpen, messages, isTyping]);
+    if (isOpen) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: reduceMotion ? "instant" : "smooth" });
+  }, [isOpen, messages, isTyping, reduceMotion]);
 
   // Handle external trigger prompts (e.g. from Place details or State guide)
   useEffect(() => {
-    if (initialPrompt) {
+    if (initialPrompt && !isTyping) {
       setIsOpen(true);
       handleSendMessage(initialPrompt);
       onClearInitialPrompt?.();
     }
-  }, [initialPrompt]);
+  }, [initialPrompt, isTyping]);
 
   const parseBooking = (rawText: string): { cleanText: string; booking: BookingData | null } => {
     const bookingMatch = rawText.match(/```booking\s*([\s\S]*?)```/);
@@ -151,13 +145,14 @@ export function YatraChatbot({
     }
   };
 
-  const handleSendMessage = async (userText: string, displayText?: string) => {
-    if (!userText.trim()) return;
+  const handleSendMessage = async (userText: string) => {
+    if (!userText.trim() || sendingRef.current) return;
+    sendingRef.current = true;
 
     const userMessage: ChatMessage = {
       id: "user-" + Date.now(),
       role: "user",
-      content: displayText || userText,
+      content: userText,
     };
 
     const newMessages = [...messages, userMessage];
@@ -216,6 +211,7 @@ export function YatraChatbot({
         },
       ]);
     } finally {
+      sendingRef.current = false;
       setIsTyping(false);
     }
   };
@@ -239,7 +235,7 @@ export function YatraChatbot({
         id: "initial-greeting",
         role: "assistant",
         content:
-          "Namaste! I'm Yatra 🙏 Tell me a destination you're curious about, tap a mood below, or say you'd like to book something — I'll take it from there.",
+          "Namaste. I'm Yatra, your India travel companion. Tell me what draws you to a place, and we'll shape a journey around it.",
       },
     ]);
   };
@@ -252,6 +248,7 @@ export function YatraChatbot({
       (p) => p.name.toLowerCase().includes(term) || term.includes(p.name.toLowerCase())
     );
     if (matchedPlace && onSelectPlace) {
+      setIsOpen(false);
       onSelectPlace(matchedPlace);
       return;
     }
@@ -259,314 +256,33 @@ export function YatraChatbot({
       (s) => s.name.toLowerCase().includes(term) || term.includes(s.name.toLowerCase())
     );
     if (matchedState && onSelectState) {
+      setIsOpen(false);
       onSelectState(matchedState);
     }
   };
 
-  return (
-    <>
-      {/* Floating Launcher Button */}
-      <AnimatePresence>
-        {!isOpen && (
-          <motion.div
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 flex items-center gap-3"
-          >
-            {/* Pulsing Hint Tooltip */}
-            <motion.div
-              initial={{ x: 10, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.8 }}
-              onClick={() => setIsOpen(true)}
-              className="hidden sm:flex items-center gap-2 rounded-full border border-[#D98A1C]/50 bg-[#17233D]/95 px-4 py-2 text-xs font-medium text-[#F7EFE1] shadow-2xl backdrop-blur-md cursor-pointer hover:bg-[#17233D] transition-colors"
-            >
-              <Sparkles className="size-3.5 text-[#F2A93B]" />
-              <span>Ask Yatra — AI Travel Companion</span>
-            </motion.div>
-
-            {/* Circular Launcher */}
-            <button
-              id="yatra-launcher-btn"
-              onClick={() => setIsOpen(true)}
-              aria-label="Open Yatra India Travel Chatbot"
-              className="group relative flex size-12 sm:size-14 md:size-16 items-center justify-center rounded-full bg-[#F2A93B] text-[#17233D] shadow-[0_12px_35px_rgba(242,169,59,0.4)] transition-all duration-300 hover:scale-108 hover:bg-[#D98A1C] active:scale-95"
-            >
-              {/* Outer Golden Glow Pulse */}
-              <span className="absolute inset-0 rounded-full bg-[#F2A93B] opacity-40 animate-ping pointer-events-none" />
-
-              {/* Chat Bubble Icon */}
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="size-6 sm:size-7 transition-transform group-hover:rotate-6"
-              >
-                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-              </svg>
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Main Chat Panel */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 30, scale: 0.94 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 30, scale: 0.94 }}
-            transition={{ type: "spring", stiffness: 320, damping: 28 }}
-            className={cn(
-              "fixed z-50 flex flex-col overflow-hidden bg-[#FBF3E4] border border-[#ECDFC4] shadow-[0_25px_60px_rgba(16,26,48,0.45)] transition-all duration-300",
-              isExpanded
-                ? "inset-2 sm:inset-4 md:inset-auto md:bottom-4 md:right-4 md:w-[540px] md:h-[calc(100vh-48px)] rounded-2xl sm:rounded-3xl"
-                : "inset-x-2 bottom-2 sm:inset-x-auto sm:right-4 sm:bottom-4 w-auto sm:w-[410px] max-w-[calc(100vw-16px)] sm:max-w-[420px] h-[580px] max-h-[calc(100dvh-16px)] rounded-t-2xl sm:rounded-t-[30px] rounded-b-xl sm:rounded-b-2xl"
-            )}
-          >
-            {/* Header with Royal Navy & Traditional Arched Scallop Motif */}
-            <div className="relative bg-[#17233D] px-4 sm:px-5 py-3.5 sm:py-4 text-[#F7EFE1] overflow-hidden rounded-t-2xl sm:rounded-t-[30px] border-b border-[#ECDFC4]/20 shadow-md">
-              {/* Subtle Jaali / Scalloped Cartographic Pattern */}
-              <div
-                className="absolute inset-0 opacity-15 pointer-events-none"
-                style={{
-                  backgroundImage: `radial-gradient(circle at 18px 0, transparent 12px, #17233D 13px)`,
-                  backgroundSize: "36px 20px",
-                  backgroundPosition: "bottom",
-                }}
-              />
-
-              <div className="relative z-10 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 items-center justify-center rounded-full bg-[#F2A93B]/15 border border-[#F2A93B]/40 text-[#F2A93B]">
-                    <Compass className="size-5 animate-spin-slow" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="display-font text-xl font-bold tracking-tight text-[#F7EFE1]">
-                        Yatra
-                      </h3>
-                      <span className="flex size-2 rounded-full bg-[#F2A93B] animate-pulse" />
-                    </div>
-                    <p className="text-xs text-[#A9B4D4] font-sans">
-                      Your India travel companion
-                    </p>
-                  </div>
-                </div>
-
-                {/* Header Action Buttons */}
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={handleClearHistory}
-                    title="Clear Conversation"
-                    className="flex size-8 items-center justify-center rounded-full text-[#A9B4D4] hover:bg-white/10 hover:text-[#F7EFE1] transition-colors"
-                  >
-                    <RotateCcw className="size-3.5" />
-                  </button>
-
-                  <button
-                    onClick={() => setIsExpanded(!isExpanded)}
-                    title={isExpanded ? "Restore Normal Size" : "Expand Chat"}
-                    className="hidden sm:flex size-8 items-center justify-center rounded-full text-[#A9B4D4] hover:bg-white/10 hover:text-[#F7EFE1] transition-colors"
-                  >
-                    {isExpanded ? (
-                      <Minimize2 className="size-3.5" />
-                    ) : (
-                      <Maximize2 className="size-3.5" />
-                    )}
-                  </button>
-
-                  <button
-                    onClick={() => setIsOpen(false)}
-                    aria-label="Close chat"
-                    className="flex size-8 items-center justify-center rounded-full text-[#A9B4D4] hover:bg-white/10 hover:text-[#F7EFE1] transition-colors"
-                  >
-                    <X className="size-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Mood Chips Carousel Bar */}
-            <div className="flex items-center gap-2 overflow-x-auto bg-[#F7EFE1] px-4 py-2.5 border-b border-[#ECDFC4] scrollbar-none select-none">
-              {MOODS.map((m) => (
-                <button
-                  key={m.label}
-                  onClick={() => handleSendMessage(m.moodPrompt, m.label)}
-                  className="flex-shrink-0 flex items-center gap-1.5 rounded-full border border-[#ECDFC4] bg-[#FBF3E4] px-3 py-1.5 text-xs font-medium text-[#23304C] transition-all hover:border-[#D98A1C] hover:bg-[#FFF3DE] active:scale-95 shadow-2xs"
-                >
-                  <span>{m.emoji}</span>
-                  <span>{m.label}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Messages Scroll Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 font-sans text-sm scroll-smooth">
-              {messages.map((msg) => {
-                const isUser = msg.role === "user";
-
-                return (
-                  <div
-                    key={msg.id}
-                    className={cn(
-                      "flex flex-col max-w-[86%] space-y-1",
-                      isUser ? "ml-auto items-end" : "mr-auto items-start"
-                    )}
-                  >
-                    {/* Sender Label */}
-                    <span className="px-1 text-[11px] text-[#5C6785] font-medium">
-                      {isUser ? "You" : "Yatra"}
-                    </span>
-
-                    {/* Chat Bubble */}
-                    <div
-                      className={cn(
-                        "rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap shadow-xs",
-                        isUser
-                          ? "bg-[#17233D] text-[#F7EFE1] rounded-br-xs"
-                          : "bg-[#FBF3E4] border border-[#ECDFC4] border-l-4 border-l-[#8C3B3B] text-[#23304C] rounded-bl-xs"
-                      )}
-                    >
-                      {msg.content}
-                    </div>
-
-                    {/* Booking Confirmation Card if present */}
-                    {msg.booking && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 6 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        className="w-full mt-2 rounded-2xl border border-[#D98A1C] bg-[#17233D] p-4 text-[#F7EFE1] shadow-xl"
-                      >
-                        {/* Demo Booking Header Badge */}
-                        <div className="flex items-center justify-between gap-2 mb-3">
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F2A93B] px-2.5 py-0.5 text-[11px] font-bold text-[#101A30]">
-                            <Ticket className="size-3" />
-                            Booking confirmed (demo)
-                          </span>
-                          <span className="text-[10px] text-[#A9B4D4] font-mono">
-                            Trip Planner
-                          </span>
-                        </div>
-
-                        {/* Booking Details Table */}
-                        <div className="space-y-1.5 text-xs">
-                          <div className="flex justify-between py-1 border-b border-white/10">
-                            <span className="text-[#A9B4D4] flex items-center gap-1.5">
-                              <MapPin className="size-3 text-[#F2A93B]" /> Destination
-                            </span>
-                            <span className="font-semibold text-[#F7EFE1] text-right">
-                              {msg.booking.destination}
-                            </span>
-                          </div>
-
-                          <div className="flex justify-between py-1 border-b border-white/10">
-                            <span className="text-[#A9B4D4] flex items-center gap-1.5">
-                              <Calendar className="size-3 text-[#F2A93B]" /> Dates
-                            </span>
-                            <span className="font-medium text-[#F7EFE1]">
-                              {msg.booking.dates}
-                            </span>
-                          </div>
-
-                          <div className="flex justify-between py-1 border-b border-white/10">
-                            <span className="text-[#A9B4D4] flex items-center gap-1.5">
-                              <Users className="size-3 text-[#F2A93B]" /> Travelers
-                            </span>
-                            <span className="font-medium text-[#F7EFE1]">
-                              {String(msg.booking.travelers)}
-                            </span>
-                          </div>
-
-                          <div className="flex justify-between py-1">
-                            <span className="text-[#A9B4D4]">Type</span>
-                            <span className="font-medium text-[#F7EFE1]">
-                              {msg.booking.type}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Reference Code & Action Buttons */}
-                        <div className="mt-3 pt-3 border-t border-white/15 flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs text-[#F2A93B] font-bold tracking-wide">
-                              Ref: {msg.booking.reference}
-                            </span>
-                            <button
-                              onClick={() => handleCopyRef(msg.booking!.reference)}
-                              title="Copy Reference"
-                              className="text-[#A9B4D4] hover:text-[#F2A93B] transition-colors"
-                            >
-                              {copiedRef === msg.booking.reference ? (
-                                <Check className="size-3.5 text-emerald-400" />
-                              ) : (
-                                <Copy className="size-3.5" />
-                              )}
-                            </button>
-                          </div>
-
-                          <button
-                            onClick={() =>
-                              handleNavigateDestination(msg.booking!.destination)
-                            }
-                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#F2A93B] hover:underline"
-                          >
-                            Explore on Atlas <ExternalLink className="size-3" />
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </div>
-                );
-              })}
-
-              {/* Typing Animation Bubble */}
-              {isTyping && (
-                <div className="flex flex-col max-w-[84%] mr-auto items-start space-y-1">
-                  <span className="px-1 text-[11px] text-[#5C6785] font-medium">Yatra</span>
-                  <div className="rounded-2xl px-4 py-3 bg-[#FBF3E4] border border-[#ECDFC4] border-l-4 border-l-[#8C3B3B] text-[#23304C] rounded-bl-xs shadow-xs">
-                    <div className="flex items-center gap-1.5 py-0.5">
-                      <span className="size-1.5 rounded-full bg-[#5C6785] animate-bounce [animation-delay:-0.3s]" />
-                      <span className="size-1.5 rounded-full bg-[#5C6785] animate-bounce [animation-delay:-0.15s]" />
-                      <span className="size-1.5 rounded-full bg-[#5C6785] animate-bounce" />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Input Row */}
-            <form
-              onSubmit={handleSubmit}
-              className="flex items-center gap-2 bg-[#F7EFE1] p-3 border-t border-[#ECDFC4]"
-            >
-              <input
-                ref={inputRef}
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about a place, or say how you're feeling…"
-                className="flex-1 rounded-full border border-[#ECDFC4] bg-[#FBF3E4] px-4 py-2.5 text-sm font-sans text-[#23304C] placeholder-[#5C6785] outline-none transition-colors focus:border-[#D98A1C]"
-              />
-
-              <button
-                type="submit"
-                disabled={!input.trim() || isTyping}
-                aria-label="Send message to Yatra"
-                className="flex size-10 items-center justify-center rounded-full bg-[#F2A93B] text-[#17233D] shadow-md transition-all hover:bg-[#D98A1C] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Send className="size-4" />
-              </button>
-            </form>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
-  );
+  return <>
+    {!isOpen && <button id="yatra-launcher-btn" className="yatra-launcher" aria-label="Open Yatra India Travel Chatbot" onClick={() => setIsOpen(true)}><Compass className="size-5" /><span>Ask Yatra</span></button>}
+    {isOpen && createPortal(<div className="yatra-layer">
+      <div className="yatra-backdrop" aria-hidden="true" onClick={() => setIsOpen(false)} />
+      <motion.div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="yatra-title" tabIndex={-1}
+        initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0 : .2 }}
+        className={cn("yatra-panel", isExpanded && "is-expanded")}>
+        <header className="yatra-header"><div className="flex items-center gap-3 min-w-0"><Compass className="size-6 text-primary shrink-0" /><div><p className="eyebrow text-primary">Bhraman travel companion</p><h2 id="yatra-title" className="display-font">Yatra</h2></div></div>
+          <div className="flex"><button disabled={isTyping} onClick={handleClearHistory} aria-label="Start a new conversation" title="Start a new conversation"><RotateCcw className="size-4" /></button><button className="yatra-expand" onClick={() => setIsExpanded(!isExpanded)} aria-label={isExpanded ? "Restore chat size" : "Expand chat"}>{isExpanded ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}</button><button data-dialog-autofocus onClick={() => setIsOpen(false)} aria-label="Minimize Yatra" title="Your conversation stays here"><X className="size-5" /></button></div>
+        </header>
+        {contextPlace && <div className="yatra-context"><MapPin className="size-4 shrink-0" /><span>Exploring {contextPlace.name}</span><button disabled={isTyping} onClick={() => handleSendMessage("Help me plan a visit to " + contextPlace.name + ". Ask about my dates, interests and starting city.")}>Plan a visit</button></div>}
+        <div className="yatra-messages" ref={scrollRef} role="log" aria-label="Conversation with Yatra" aria-live="polite" aria-relevant="additions text" aria-busy={isTyping}>
+          {messages.map(msg => <article key={msg.id} className={cn("yatra-message", msg.role === "user" && "is-user")}><p className="yatra-sender">{msg.role === "user" ? "You" : "Yatra"}</p><div className="yatra-bubble">{msg.content}</div>
+            {msg.booking && <div className="yatra-booking"><p className="eyebrow text-primary">Illustrative booking · demo</p><h3 className="display-font">{msg.booking.destination}</h3><dl><div><dt>Dates</dt><dd>{msg.booking.dates}</dd></div><div><dt>Travellers</dt><dd>{msg.booking.travelers}</dd></div><div><dt>Experience</dt><dd>{msg.booking.type}</dd></div></dl><p className="text-xs text-muted-foreground">Planning reference only. No payment, reservation or ticket is issued.</p><div className="flex flex-wrap items-center gap-2"><span className="text-xs">Ref: {msg.booking.reference}</span><button aria-label="Copy booking reference" onClick={() => handleCopyRef(msg.booking!.reference)}>{copiedRef === msg.booking.reference ? <Check className="size-4" /> : <Copy className="size-4" />}</button><button onClick={() => handleNavigateDestination(msg.booking!.destination)}>Explore on Atlas <ChevronRight className="size-4" /></button></div></div>}
+          </article>)}
+          {isTyping && <p className="yatra-thinking" role="status"><span className="yatra-thinking-dot" />Yatra is considering your journey…</p>}
+          <div ref={messagesEndRef} />
+        </div>
+        <div className="yatra-suggestions" aria-label="Suggested travel prompts">{messages.length === 1 && <p className="eyebrow text-muted-foreground">What kind of journey?</p>}<div>{MOODS.map(m => <button key={m.label} disabled={isTyping} onClick={() => handleSendMessage(m.moodPrompt)}>{m.emoji} {m.label}</button>)}</div></div>
+        <form onSubmit={handleSubmit} className="yatra-composer"><label htmlFor="yatra-message" className="sr-only">Message Yatra</label><div><textarea id="yatra-message" ref={inputRef} rows={2} value={input} onChange={e => setInput(e.target.value)} placeholder="Where would you like to go?" onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); if (!isTyping) handleSubmit(e); } }} /><button type="submit" disabled={!input.trim() || isTyping} aria-label="Send message to Yatra"><Send className="size-4" /></button></div><p>AI travel guidance · Check current details before travelling.</p></form>
+      </motion.div>
+    </div>, document.body)}
+  </>;
 }
+

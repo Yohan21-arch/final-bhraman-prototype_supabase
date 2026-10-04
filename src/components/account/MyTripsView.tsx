@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { userAccountService } from "@/services/userAccountService";
 import type { TravelPlan, Place } from "@/types";
@@ -31,6 +31,8 @@ export function MyTripsView({
   places?: Place[];
 }) {
   const { user } = useAuth();
+  const tripOpener = useRef<HTMLElement | null>(null);
+  const openTripDialog = () => { tripOpener.current = document.activeElement as HTMLElement; setFormError(""); setModalOpen(true); };
   const [plans, setPlans] = useState<TravelPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -39,6 +41,7 @@ export function MyTripsView({
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
 
   const loadPlans = async () => {
     setLoading(true);
@@ -60,6 +63,8 @@ export function MyTripsView({
     e.preventDefault();
     if (!name.trim()) return;
 
+    setFormError("");
+    if (startDate && endDate && endDate < startDate) { setFormError("Choose an end date on or after your start date."); return; }
     setIsSubmitting(true);
     const created = await userAccountService.createTravelPlan(user?.id || "guest", {
       name: name.trim(),
@@ -67,7 +72,7 @@ export function MyTripsView({
       start_date: startDate || undefined,
       end_date: endDate || undefined,
       destinations: [],
-    });
+    }).catch(() => null);
 
     setIsSubmitting(false);
     if (created) {
@@ -77,7 +82,7 @@ export function MyTripsView({
       setStartDate("");
       setEndDate("");
       setModalOpen(false);
-    }
+    } else { setFormError("We couldn’t save this trip. Please try again."); }
   };
 
   const handleDeletePlan = async (planId: string) => {
@@ -117,7 +122,7 @@ export function MyTripsView({
           </button>
           <button
             type="button"
-            onClick={() => setModalOpen(true)}
+            onClick={openTripDialog}
             className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
           >
             <Plus className="size-3.5" />
@@ -154,7 +159,7 @@ export function MyTripsView({
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
-              onClick={() => setModalOpen(true)}
+              onClick={openTripDialog}
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-all cursor-pointer"
             >
               <Plus className="size-3.5" />
@@ -229,7 +234,7 @@ export function MyTripsView({
 
       {/* New Trip Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl border-border/80 bg-background/98 p-6 backdrop-blur-xl">
+        <DialogContent onCloseAutoFocus={event => { event.preventDefault(); tripOpener.current?.focus(); }} className="account-trip-dialog sm:max-w-md rounded-2xl border-border/80 bg-background/98 p-6 backdrop-blur-xl">
           <DialogHeader>
             <DialogTitle className="display-font text-xl font-bold text-foreground flex items-center gap-2">
               <Compass className="size-5 text-primary" />
@@ -240,6 +245,7 @@ export function MyTripsView({
             </DialogDescription>
           </DialogHeader>
 
+          {formError && <p role="alert" className="text-sm text-destructive">{formError}</p>}
           <form onSubmit={handleCreatePlan} className="space-y-4 pt-3">
             <div className="space-y-1">
               <label className="text-xs font-semibold text-foreground">
@@ -248,7 +254,7 @@ export function MyTripsView({
               <input
                 type="text"
                 required
-                value={name}
+                aria-label="Trip name" value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Royal Forts of Rajasthan"
                 className="w-full rounded-xl border border-border bg-card px-3.5 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
@@ -261,7 +267,7 @@ export function MyTripsView({
               </label>
               <textarea
                 rows={3}
-                value={description}
+                aria-label="Description or goals" value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Exploring ancient stepwells, local Mewari cuisine, and palace architecture..."
                 className="w-full rounded-xl border border-border bg-card px-3.5 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
@@ -275,7 +281,7 @@ export function MyTripsView({
                 </label>
                 <input
                   type="date"
-                  value={startDate}
+                  aria-label="Start date" value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   className="w-full rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 />
@@ -287,7 +293,7 @@ export function MyTripsView({
                 </label>
                 <input
                   type="date"
-                  value={endDate}
+                  aria-label="End date" min={startDate || undefined} value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   className="w-full rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 />
@@ -323,3 +329,5 @@ export function MyTripsView({
     </div>
   );
 }
+
+

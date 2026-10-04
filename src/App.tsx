@@ -1,3 +1,4 @@
+import { AccountShell } from "@/components/account/AccountShell";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
 import {
@@ -332,6 +333,7 @@ function BhramanApp() {
             transition={{ duration: reduceMotion ? 0 : 0.22, ease: "easeOut" }}
             className="w-full"
           >
+            <AccountShell active={activePlace || activeState ? null : activeTab} onNavigate={handleSelectTab} onAskYatra={handleAskYatra}>
             {/* VIEW 1: Immersive Place Detail */}
             {activePlace ? (
           <PlaceDetail
@@ -369,7 +371,7 @@ function BhramanApp() {
             places={places}
             onSelectPlace={(place) => handleSelectPlace(place, "Back to My List")}
             onSelectState={handleOpenFullStateGuide}
-            onBack={() => setActiveTab("map")}
+            onBack={() => handleSelectTab("map")}
           />
         ) : activeTab === "guides" ? (
           /* VIEW 5: Verified Tour Guides & Travel Price Ratings */
@@ -657,12 +659,14 @@ function BhramanApp() {
             </section>
           </main>
         )}
+          </AccountShell>
           </motion.div>
         </AnimatePresence>
       </div>
 
       {/* Yatra Floating India Travel Chatbot */}
       <YatraChatbot
+        contextPlace={activePlace}
         places={places}
         onSelectPlace={(p) => handleSelectPlace(p, "Back to Travel Chat")}
         onSelectState={handleOpenFullStateGuide}
@@ -699,5 +703,6 @@ export default function App() {
     </MotionConfig>
   );
 }
+
 
 

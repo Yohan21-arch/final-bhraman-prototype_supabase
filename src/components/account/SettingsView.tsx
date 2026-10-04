@@ -36,7 +36,7 @@ export function SettingsView({
   };
 
   const handleClearCache = () => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && window.confirm("Clear trips and demo booking records stored on this device? This cannot be undone. Cloud records and saved destinations are not affected.")) {
       localStorage.removeItem("bhraman_local_travel_plans");
       localStorage.removeItem("bhraman_demo_bookings");
       setCacheCleared(true);
@@ -69,7 +69,7 @@ export function SettingsView({
             <span>Security & Authentication</span>
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Your login identity and session tokens are secured by Supabase Auth with Row Level Security.
+            Manage your existing sign-in session and account preferences.
           </p>
         </div>
 
@@ -117,7 +117,7 @@ export function SettingsView({
             <span>Data Persistence & Synchronization</span>
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Control how your saved destinations, travel plans, and booking records synchronize with Supabase.
+            Manage saved places across your account and this device.
           </p>
         </div>
 
@@ -127,7 +127,7 @@ export function SettingsView({
               <div>
                 <p className="text-sm font-semibold text-foreground">Sync Local Wishlist to Cloud</p>
                 <p className="text-xs text-muted-foreground">
-                  Pushes any destinations bookmarked locally to your authenticated Supabase profile.
+                  Adds places saved on this device to your account collection.
                 </p>
               </div>
               <button
@@ -142,14 +142,14 @@ export function SettingsView({
           )}
 
           {syncStatus && (
-            <p className="text-xs text-primary font-medium pt-2">{syncStatus}</p>
+            <p role="status" className="text-xs text-primary font-medium pt-2">{syncStatus}</p>
           )}
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4">
             <div>
-              <p className="text-sm font-semibold text-foreground">Clear Temporary Browser Cache</p>
+              <p className="text-sm font-semibold text-foreground">Clear Local Trips & Demo Records</p>
               <p className="text-xs text-muted-foreground">
-                Clears cached demo trips and temporary search indexes without affecting your cloud account.
+                Permanently removes trips and demo booking records stored in this browser. Cloud records and saved destinations stay unchanged.
               </p>
             </div>
             <button
@@ -158,7 +158,7 @@ export function SettingsView({
               className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-xl border border-destructive/30 text-destructive hover:bg-destructive/10 px-3.5 py-2 text-xs font-semibold transition-colors cursor-pointer"
             >
               <Trash2 className="size-3.5" />
-              <span>{cacheCleared ? "Cache Cleared!" : "Clear Cache"}</span>
+              <span>{cacheCleared ? "Local Records Cleared" : "Clear Local Records"}</span>
             </button>
           </div>
         </div>
@@ -189,3 +189,5 @@ export function SettingsView({
     </div>
   );
 }
+
+

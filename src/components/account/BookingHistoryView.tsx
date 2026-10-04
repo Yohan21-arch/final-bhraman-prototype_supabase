@@ -66,7 +66,7 @@ export function BookingHistoryView({
             <h1 className="display-font text-2xl md:text-3xl font-bold text-foreground">
               Booking History
             </h1>
-            <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+            <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-semibold text-primary">
               Demo / Illustrative
             </span>
           </div>
@@ -79,7 +79,7 @@ export function BookingHistoryView({
           type="button"
           onClick={() => {
             if (onAskYatra) {
-              onAskYatra("Can you help me generate a simulated itinerary booking for visiting Udaipur and Jodhpur?");
+              onAskYatra("Help me plan a trip to India. Ask about my destinations and dates; keep any booking examples clearly labelled as illustrative.");
             } else {
               onSelectTab("map");
             }
@@ -87,18 +87,18 @@ export function BookingHistoryView({
           className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
         >
           <Sparkles className="size-3.5" />
-          <span>Book with Yatra AI</span>
+          <span>Plan with Yatra</span>
         </button>
       </div>
 
       {/* Prominent Educational / Demo Disclaimer Banner */}
-      <div className="flex items-start gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4 text-xs text-amber-900 dark:text-amber-300">
-        <Info className="size-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+      <div className="flex items-start gap-3 rounded-2xl border border-primary/25 bg-primary/10 p-4 text-xs text-primary">
+        <Info className="size-5 shrink-0 text-primary mt-0.5" />
         <div className="space-y-1">
-          <p className="font-semibold text-amber-950 dark:text-amber-200">
+          <p className="font-semibold text-primary">
             Illustrative / Demo Booking Records
           </p>
-          <p className="text-amber-900/90 dark:text-amber-300/90 leading-relaxed">
+          <p className="text-muted-foreground leading-relaxed">
             Bhraman provides intelligent travel curation and simulated itinerary booking estimates. Real-world payment gateway transactions, official monument tickets (ASI), and commercial hotel vouchers are not processed on this platform. Use these reference records when planning your actual trip with official gate counters or accredited operators.
           </p>
         </div>
@@ -132,7 +132,7 @@ export function BookingHistoryView({
             type="button"
             onClick={() => {
               if (onAskYatra) {
-                onAskYatra("Plan a 3-day trip to Varanasi with official boat tour and temple entry pass.");
+                onAskYatra("Help me plan a 3-day Varanasi visit. Explain how to check official ticket and tour availability; any booking examples must be illustrative.");
               }
             }}
             className="mt-6 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-all cursor-pointer"
@@ -217,3 +217,5 @@ export function BookingHistoryView({
     </div>
   );
 }
+
+

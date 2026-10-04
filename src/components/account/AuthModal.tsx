@@ -1,5 +1,7 @@
+import { createPortal } from "react-dom";
+import { useDialogFocus } from "@/lib/use-dialog-focus";
 import { useState, useEffect, type FormEvent } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Sparkles,
@@ -44,25 +46,6 @@ export function AuthModal({ isOpen, onClose, defaultMode = "signin" }: AuthModal
       setMode(defaultMode);
     }
   }, [isOpen, defaultMode]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
-        resetFormState();
-        onClose();
-      }
-    };
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-      window.addEventListener("keydown", handleKeyDown);
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen, onClose]);
 
   const resetFormState = () => {
     setFullName("");
@@ -165,10 +148,12 @@ export function AuthModal({ isOpen, onClose, defaultMode = "signin" }: AuthModal
     }
   };
 
-  return (
+  const reduceMotion = useReducedMotion();
+  const dialogRef = useDialogFocus(isOpen, () => { resetFormState(); onClose(); });
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+        <div className="auth-layer fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -185,14 +170,14 @@ export function AuthModal({ isOpen, onClose, defaultMode = "signin" }: AuthModal
 
           {/* Modal Content */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
             onClick={(e) => e.stopPropagation()}
-            role="dialog"
+            ref={dialogRef} tabIndex={-1} role="dialog" aria-labelledby="auth-title" aria-describedby="auth-description"
             aria-modal="true"
-            className="relative z-10 w-full max-w-[calc(100vw-24px)] sm:max-w-[440px] overflow-hidden rounded-2xl border border-border/80 bg-background/98 shadow-2xl backdrop-blur-xl my-auto"
+            className="auth-dialog relative z-10 w-full max-w-[calc(100vw-24px)] sm:max-w-[440px] overflow-hidden rounded-2xl border border-border/80 bg-background/98 shadow-2xl backdrop-blur-xl my-auto"
           >
             {/* Close Button */}
             <button
@@ -201,7 +186,7 @@ export function AuthModal({ isOpen, onClose, defaultMode = "signin" }: AuthModal
                 resetFormState();
                 onClose();
               }}
-              aria-label="Close dialog"
+              data-dialog-autofocus aria-label="Close dialog"
               className="absolute right-3.5 top-3.5 z-20 flex size-8 items-center justify-center rounded-full bg-background/60 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
             >
               <X className="size-4" />
@@ -210,16 +195,16 @@ export function AuthModal({ isOpen, onClose, defaultMode = "signin" }: AuthModal
             {/* Top Decorative Header */}
             <div className="relative px-4 sm:px-6 pt-6 sm:pt-7 pb-4 bg-gradient-to-b from-primary/10 via-background/40 to-background border-b border-border/40 text-center">
               <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/25 shadow-sm">
-                <Compass className="size-6 animate-pulse" />
+                <Compass className="size-6" />
               </div>
-              <h2 className="display-font text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+              <h2 id="auth-title" className="display-font text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                 {mode === "signin" && "Welcome to Bhraman"}
                 {mode === "signup" && "Create Your Account"}
                 {mode === "forgot" && "Reset Password"}
               </h2>
-              <p className="mt-1 text-xs text-muted-foreground max-w-xs mx-auto">
+              <p id="auth-description" className="mt-1 text-xs text-muted-foreground max-w-xs mx-auto">
                 {mode === "signin" && "Sign in to save your dream destinations, itineraries, and travel bookings across India."}
-                {mode === "signup" && "Join India's curated expedition platform with personalized travel intelligence."}
+                {mode === "signup" && "Keep your favourite places and travel plans together."}
                 {mode === "forgot" && "Enter your email address and we'll send you instructions to recover your account."}
               </p>
             </div>
@@ -227,14 +212,14 @@ export function AuthModal({ isOpen, onClose, defaultMode = "signin" }: AuthModal
             <div className="p-4 sm:p-6 pt-4 sm:pt-5 space-y-4">
               {/* Status Alerts */}
               {errorMessage && (
-                <div className="flex items-start gap-2.5 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
+                <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
                   <AlertCircle className="size-4 shrink-0 mt-0.5" />
                   <span>{errorMessage}</span>
                 </div>
               )}
 
               {successMessage && (
-                <div className="flex items-start gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-600 dark:text-emerald-400">
+                <div role="status" className="flex items-start gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 className="size-4 shrink-0 mt-0.5" />
                   <span>{successMessage}</span>
                 </div>
@@ -313,13 +298,13 @@ export function AuthModal({ isOpen, onClose, defaultMode = "signin" }: AuthModal
               <form onSubmit={handleSubmit} className="space-y-3.5">
                 {mode === "signup" && (
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-foreground">
+                    <label htmlFor="auth-name" className="text-xs font-medium text-foreground">
                       Full Name
                     </label>
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                       <input
-                        type="text"
+                        type="text" id="auth-name" autoComplete="name"
                         required
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
@@ -331,11 +316,11 @@ export function AuthModal({ isOpen, onClose, defaultMode = "signin" }: AuthModal
                 )}
 
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-foreground">Email</label>
+                  <label htmlFor="auth-email" className="text-xs font-medium text-foreground">Email</label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                     <input
-                      type="email"
+                      type="email" id="auth-email" autoComplete="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -348,7 +333,7 @@ export function AuthModal({ isOpen, onClose, defaultMode = "signin" }: AuthModal
                 {mode !== "forgot" && (
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-medium text-foreground">
+                      <label htmlFor="auth-password" className="text-xs font-medium text-foreground">
                         Password
                       </label>
                       {mode === "signin" && (
@@ -364,7 +349,7 @@ export function AuthModal({ isOpen, onClose, defaultMode = "signin" }: AuthModal
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                       <input
-                        type="password"
+                        type="password" id="auth-password" autoComplete={mode === "signup" ? "new-password" : "current-password"}
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -447,6 +432,8 @@ export function AuthModal({ isOpen, onClose, defaultMode = "signin" }: AuthModal
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>, document.body
   );
 }
+
+

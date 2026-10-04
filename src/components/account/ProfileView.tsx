@@ -230,12 +230,13 @@ export function ProfileView({
             Personal Information
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Update your public display name and preferred regional language. Sensitive credentials remain secured by Supabase.
+            Update your public display name and preferred regional language. Your sign-in details stay with your existing authentication provider.
           </p>
         </div>
 
         {statusMessage && (
           <div
+            role={statusMessage.type === "error" ? "alert" : "status"}
             className={`flex items-start gap-2.5 rounded-xl border p-3.5 text-xs ${
               statusMessage.type === "success"
                 ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
@@ -262,7 +263,7 @@ export function ProfileView({
               <input
                 type="text"
                 required
-                value={fullName}
+                aria-label="Full name" autoComplete="name" value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Enter your name"
                 className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
@@ -279,7 +280,7 @@ export function ProfileView({
               <input
                 type="email"
                 disabled
-                value={user.email || ""}
+                aria-label="Email address" value={user.email || ""}
                 className="w-full rounded-xl border border-border/60 bg-muted/40 px-3.5 py-2.5 text-sm text-muted-foreground cursor-not-allowed"
               />
             </div>
@@ -292,7 +293,7 @@ export function ProfileView({
               Preferred Language
             </label>
             <select
-              value={language}
+              aria-label="Preferred language" value={language}
               onChange={(e) => setLanguage(e.target.value)}
               className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
             >
@@ -303,7 +304,7 @@ export function ProfileView({
               ))}
             </select>
             <p className="text-[11px] text-muted-foreground">
-              Customizes AI assistance and monument historical descriptions according to your linguistic preference.
+              Your preferred language is saved with your profile.
             </p>
           </div>
 
@@ -331,3 +332,5 @@ export function ProfileView({
     </div>
   );
 }
+
+

@@ -66,13 +66,13 @@ export function ProfileMenu({ onSelectTab, onOpenAuthModal }: ProfileMenuProps) 
     .toUpperCase() || "U";
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="profile-menu relative" ref={menuRef} onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); setIsOpen(false); menuRef.current?.querySelector<HTMLButtonElement>('[aria-label="User profile menu"]')?.focus(); } }}>
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         className="flex items-center gap-2 rounded-full p-0.5 ring-1 ring-border/80 hover:ring-primary/60 focus:outline-none focus:ring-2 focus:ring-primary transition-all cursor-pointer group"
         aria-label="User profile menu"
-        aria-expanded={isOpen}
+        aria-expanded={isOpen} aria-controls="profile-menu-options"
       >
         {avatarUrl ? (
           <img
@@ -89,7 +89,7 @@ export function ProfileMenu({ onSelectTab, onOpenAuthModal }: ProfileMenuProps) 
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-56 max-w-[calc(100vw-24px)] z-50 p-1.5 rounded-2xl border border-border/80 bg-background/98 backdrop-blur-xl shadow-xl">
+        <div id="profile-menu-options" className="absolute right-0 top-full mt-2 w-56 max-w-[calc(100vw-24px)] z-50 p-1.5 rounded-2xl border border-border/80 bg-background/98 backdrop-blur-xl shadow-xl">
           {/* User Identity Header */}
           <div className="px-3 py-2.5">
             <div className="flex items-center justify-between">
@@ -189,3 +189,5 @@ export function ProfileMenu({ onSelectTab, onOpenAuthModal }: ProfileMenuProps) 
     </div>
   );
 }
+
+

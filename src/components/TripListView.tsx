@@ -71,13 +71,13 @@ export function TripListView({
       </button>
 
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border/80 pb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between border-b border-border/80 pb-6">
         <div>
           <p className="eyebrow flex items-center gap-1.5 text-primary">
             <Bookmark className="size-3.5" /> Curated Travel Wishlist
           </p>
           <h1 className="display-font mt-1 text-3xl font-extrabold text-foreground sm:text-4xl">
-            My Bhraman Itinerary
+            My Bhraman List & Notes
           </h1>
           <p className="text-xs md:text-sm text-muted-foreground mt-1">
             {savedPlaces.length} {savedPlaces.length === 1 ? "destination" : "destinations"} saved for your journey across India
@@ -143,12 +143,12 @@ export function TripListView({
             return (
               <div
                 key={place.id}
-                className="group relative flex flex-col gap-4 rounded-xl border border-border/80 bg-card p-4 transition-all hover:border-primary/50 sm:flex-row sm:items-center sm:justify-between"
+                className="group relative flex flex-col gap-4 rounded-xl border border-border/80 bg-card p-4 transition-all hover:border-primary/50 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
               >
                 {/* Left Thumbnail & Info */}
                 <div
                   onClick={() => onSelectPlace(place)}
-                  className="flex flex-1 cursor-pointer items-center gap-4"
+                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-4"
                 >
                   <div className="relative size-20 shrink-0 overflow-hidden rounded-lg bg-secondary">
                     <PlaceImage place={place} className="h-full w-full object-cover" />
@@ -169,7 +169,7 @@ export function TripListView({
                       )}
                     </div>
                     <h3 className="display-font text-lg font-bold text-foreground transition-colors group-hover:text-primary truncate">
-                      {place.name}
+                      <button id={"list-place-" + place.id} className="text-left" onClick={event => { event.stopPropagation(); onSelectPlace(place); }}>{place.name}</button>
                     </h3>
                     <p className="line-clamp-1 text-xs text-muted-foreground">
                       {place.shortDesc}
@@ -188,6 +188,7 @@ export function TripListView({
                 <div className="flex flex-wrap items-center gap-2 border-t border-border/50 pt-3 sm:border-t-0 sm:pt-0">
                   {/* Day Picker */}
                   <select
+                    aria-label={"Travel day for " + place.name}
                     value={customDay || ""}
                     onChange={(e) => setDay(place.id, e.target.value ? Number(e.target.value) : undefined)}
                     className="rounded-lg border border-border bg-secondary px-2.5 py-1 text-xs text-foreground outline-none focus:border-primary"
@@ -228,8 +229,9 @@ export function TripListView({
 
                 {/* Expanded Inline Note Input */}
                 {isEditing && (
-                  <div className="w-full pt-3 sm:hidden">
+                  <div className="w-full basis-full pt-3">
                     <textarea
+                      aria-label={"Personal notes for " + place.name}
                       value={activeNoteText}
                       onChange={(e) => setActiveNoteText(e.target.value)}
                       placeholder="Add personal notes..."
@@ -246,3 +248,4 @@ export function TripListView({
     </main>
   );
 }
+
