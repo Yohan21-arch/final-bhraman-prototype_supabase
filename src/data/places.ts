@@ -5,6 +5,7 @@ import { westPlaces } from "./destinations/west";
 import { eastPlaces } from "./destinations/east";
 import { centralPlaces } from "./destinations/central";
 import { northeastPlaces } from "./destinations/northeast";
+import { applyDestinationImageOverride } from "./destination-image-overrides";
 
 export const allTags: Tag[] = [
   "Heritage",
@@ -29,7 +30,7 @@ export const PLACES_DATA: Place[] = [
   ...eastPlaces,
   ...centralPlaces,
   ...northeastPlaces,
-];
+].map(applyDestinationImageOverride);
 
 // Active destinations repository (defaults to PLACES_DATA, updated dynamically when Supabase loads)
 let dynamicPlacesStore: Place[] = PLACES_DATA;
@@ -40,7 +41,7 @@ export function getLoadedPlaces(): Place[] {
 
 export function setLoadedPlaces(places: Place[]): void {
   if (Array.isArray(places) && places.length > 0) {
-    dynamicPlacesStore = places;
+    dynamicPlacesStore = places.map(applyDestinationImageOverride);
   }
 }
 

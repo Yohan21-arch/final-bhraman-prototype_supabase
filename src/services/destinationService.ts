@@ -8,6 +8,7 @@ import {
   setLoadedPlaces,
 } from "@/data/places";
 import type { Place, Category, Tag, GeoCoordinates, ImageAttribution } from "@/types";
+import { applyDestinationImageOverride } from "@/data/destination-image-overrides";
 
 /**
  * Safely parse JSON or array fields that might be stored as text, JSON, or arrays in Supabase.
@@ -58,7 +59,7 @@ export function mapDestinationRow(row: Record<string, any>): Place {
     []
   );
 
-  return {
+  return applyDestinationImageOverride({
     id: String(row.id || "").trim(),
     name: String(row.name || "Unnamed Landmark").trim(),
     state: String(row.state || "").trim().toLowerCase(),
@@ -74,7 +75,7 @@ export function mapDestinationRow(row: Record<string, any>): Place {
     imageAttributions: imageAttributions.length > 0 ? imageAttributions : undefined,
     coordinates,
     featured: Boolean(row.featured),
-  };
+  });
 }
 
 let _lastSourceIsSupabase = false;
