@@ -20,6 +20,32 @@ const DIRECT_COMMONS_IMAGES: Record<string, string> = {
 
 const commonsImage = (filename: string) => DIRECT_COMMONS_IMAGES[filename];
 
+function commonsFilenameFromUrl(source: string): string | null {
+  try {
+    const url = new URL(source);
+    if (url.hostname !== "upload.wikimedia.org") return null;
+
+    const segments = decodeURIComponent(url.pathname).split("/").filter(Boolean);
+    const thumbIndex = segments.indexOf("thumb");
+    const filename =
+      thumbIndex >= 0 && segments.length > thumbIndex + 3
+        ? segments[thumbIndex + 3]
+        : segments.at(-1);
+
+    return filename || null;
+  } catch {
+    return null;
+  }
+}
+
+function proxyCommonsImage(source: string): string {
+  if (source.startsWith("/api/destination-photo?")) return source;
+  const filename = commonsFilenameFromUrl(source);
+  return filename
+    ? `/api/destination-photo?file=${encodeURIComponent(filename)}`
+    : source;
+}
+
 const commonsAttribution = (
   filename: string,
   title: string,
@@ -101,11 +127,16 @@ export const DESTINATION_IMAGE_OVERRIDES: Record<string, ImageOverride> = {
 
 export function applyDestinationImageOverride(place: Place): Place {
   const override = DESTINATION_IMAGE_OVERRIDES[place.id];
-  if (!override) return place;
+  const resolved = override
+    ? {
+        ...place,
+        images: override.images,
+        imageAttributions: override.imageAttributions,
+      }
+    : place;
 
   return {
-    ...place,
-    images: override.images,
-    imageAttributions: override.imageAttributions,
+    ...resolved,
+    images: (resolved.images || []).map(proxyCommonsImage),
   };
 }
