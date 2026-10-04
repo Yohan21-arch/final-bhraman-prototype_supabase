@@ -5,8 +5,20 @@ type ImageOverride = {
   imageAttributions: ImageAttribution[];
 };
 
-const commonsImage = (filename: string) =>
-  `https://commons.wikimedia.org/wiki/Special:Redirect/file/${encodeURIComponent(filename)}?width=1280`;
+const DIRECT_COMMONS_IMAGES: Record<string, string> = {
+  "Pangong Tso lake banner.jpg": "https://upload.wikimedia.org/wikipedia/commons/b/b8/Pangong_Tso_lake_banner.jpg",
+  "Pangong Tso Lake.jpg": "https://upload.wikimedia.org/wikipedia/commons/b/be/Pangong_Tso_Lake.jpg",
+  "Marble Rocks at Bhedaghat.jpg": "https://upload.wikimedia.org/wikipedia/commons/c/c8/Marble_Rocks_at_Bhedaghat.jpg",
+  "Dhuandhar Falls in Bhedaghat.jpg": "https://upload.wikimedia.org/wikipedia/commons/b/b7/Dhuandhar_Falls_in_Bhedaghat.jpg",
+  "Waterfall at Tirathgarh.jpg": "https://upload.wikimedia.org/wikipedia/commons/2/2d/Waterfall_at_Tirathgarh.jpg",
+  "Mangalajodi Wetland.jpg": "https://upload.wikimedia.org/wikipedia/commons/3/3d/Mangalajodi_Wetland.jpg",
+  "Netarhat, Jharkhand.jpg": "https://upload.wikimedia.org/wikipedia/commons/a/a4/Netarhat%2C_Jharkhand.jpg",
+  "Habba Khatoon.jpg": "https://upload.wikimedia.org/wikipedia/commons/7/76/Habba_Khatoon.jpg",
+  "Kangla Fort Imphal.jpg": "https://upload.wikimedia.org/wikipedia/commons/1/17/Kangla_Fort_Imphal.jpg",
+  "The rann of kutch.jpg": "https://upload.wikimedia.org/wikipedia/commons/b/b2/The_rann_of_kutch.jpg",
+};
+
+const commonsImage = (filename: string) => DIRECT_COMMONS_IMAGES[filename];
 
 const commonsAttribution = (
   filename: string,
