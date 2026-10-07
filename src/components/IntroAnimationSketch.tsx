@@ -77,7 +77,6 @@ export function IntroAnimationSketch({ onFinished }: IntroAnimationSketchProps) 
         // Respect prefers-reduced-motion: skip straight to the title, no morphing.
         setStage("title");
         await wait(500);
-      if (cancelled || cancelledRef.current) return;
         if (cancelled || cancelledRef.current) return;
         setStage("exit");
         await wait(200);
@@ -90,7 +89,6 @@ export function IntroAnimationSketch({ onFinished }: IntroAnimationSketchProps) 
       if (cancelled || cancelledRef.current) return;
       setShowArchAccent(true);
       await wait(500);
-      if (cancelled || cancelledRef.current) return;
       if (cancelled || cancelledRef.current) return;
       setShowArchAccent(false);
 

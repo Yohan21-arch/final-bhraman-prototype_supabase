@@ -384,7 +384,7 @@ export function ImageLightbox({
                     `Tell me about visiting ${currentImage.placeName} in ${currentImage.stateName}. What are the photography tips and best vantage points?`
                   );
                 }}
-                className="inline-flex items-center gap-1 text-[11px] text-[#F2A93B] hover:underline"
+                className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
               >
                 <Sparkles className="size-3" />
                 <span>Ask Yatra AI</span>

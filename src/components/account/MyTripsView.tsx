@@ -118,7 +118,7 @@ export function MyTripsView({
             className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-muted transition-colors cursor-pointer"
           >
             <Sparkles className="size-3.5 text-primary" />
-            <span>AI Itinerary Planner</span>
+            <span>Itinerary Planner</span>
           </button>
           <button
             type="button"
@@ -154,7 +154,7 @@ export function MyTripsView({
             No travel plans created yet
           </h3>
           <p className="mt-1.5 text-xs text-muted-foreground max-w-sm mx-auto">
-            Design your upcoming journey to Ladakh, Rajasthan, Kerala, or the Northeast using our AI itinerary generator or by creating a custom trip plan.
+            Design your upcoming journey to Ladakh, Rajasthan, Kerala, or the Northeast using the draft itinerary planner or by creating a custom trip plan.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <button
@@ -171,7 +171,7 @@ export function MyTripsView({
               className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <Sparkles className="size-3.5 text-primary" />
-              <span>Launch AI Planner</span>
+              <span>Launch Trip Planner</span>
             </button>
           </div>
         </div>
@@ -329,5 +329,3 @@ export function MyTripsView({
     </div>
   );
 }
-
-

@@ -168,7 +168,7 @@ export function TripListView({
                         </span>
                       )}
                     </div>
-                    <h3 className="display-font text-lg font-bold text-foreground transition-colors group-hover:text-primary truncate">
+                    <h3 className="display-font text-lg font-bold text-foreground transition-colors group-hover:text-primary break-words">
                       <button id={"list-place-" + place.id} className="text-left" onClick={event => { event.stopPropagation(); onSelectPlace(place); }}>{place.name}</button>
                     </h3>
                     <p className="line-clamp-1 text-xs text-muted-foreground">
@@ -248,4 +248,3 @@ export function TripListView({
     </main>
   );
 }
-

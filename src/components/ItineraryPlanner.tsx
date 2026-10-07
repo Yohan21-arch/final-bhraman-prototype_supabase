@@ -43,13 +43,14 @@ export function ItineraryPlanner({
   const [selectedState, setSelectedState] = useState<string>("rajasthan");
   const [itinerary, setItinerary] = useState<GeneratedDay[] | null>(null);
   const [allSaved, setAllSaved] = useState(false);
+  const [generationError, setGenerationError] = useState("");
   const { toggle, has } = useTripList();
 
   const handleGenerate = () => {
     // Collect candidate places from Supabase loaded places or fallback pool
     const pool = places && places.length > 0 ? places : getLoadedPlaces();
-    let candidates = pool.filter((p) => {
-      if (selectedState !== "all" && p.state === selectedState) return true;
+    const candidates = pool.filter((p) => {
+      if (selectedState !== "all") return p.state === selectedState;
       if (selectedRegion !== "all") {
         const s = STATES_DATA.find((st) => st.id === p.state);
         return s && s.region === selectedRegion;
@@ -58,8 +59,10 @@ export function ItineraryPlanner({
     });
 
     if (candidates.length === 0) {
-      candidates = pool;
+      setGenerationError("No destinations are available for this selection. Try another state or region.");
+      return;
     }
+    setGenerationError("");
 
     if (style === "hidden") {
       candidates.sort((a, b) => (a.category === "hidden" ? -1 : 1));
@@ -111,11 +114,8 @@ export function ItineraryPlanner({
 
   const handleSaveAllToTripList = () => {
     if (!itinerary) return;
-    itinerary.forEach((d) => {
-      if (!has(d.morning.place.id)) toggle(d.morning.place.id);
-      if (!has(d.afternoon.place.id)) toggle(d.afternoon.place.id);
-      if (!has(d.evening.place.id)) toggle(d.evening.place.id);
-    });
+    const placeIds = new Set<string>(itinerary.flatMap(day => [day.morning.place.id, day.afternoon.place.id, day.evening.place.id]));
+    placeIds.forEach(id => { if (!has(id)) toggle(id); });
     setAllSaved(true);
     setTimeout(() => setAllSaved(false), 3000);
   };
@@ -131,7 +131,7 @@ export function ItineraryPlanner({
           Craft Your India Expedition
         </h1>
         <p className="text-xs md:text-sm text-muted-foreground">
-          Tailor an optimized day-by-day travel route blending legendary monuments with secluded hidden sanctuaries across India.
+          Create a draft day-by-day itinerary from Bhraman's destinations. Check travel distances, opening times and availability before travelling.
         </p>
       </div>
 
@@ -147,6 +147,7 @@ export function ItineraryPlanner({
               {[3, 5, 7, 10].map((d) => (
                 <button
                   key={d}
+                  aria-pressed={duration === d}
                   onClick={() => setDuration(d)}
                   className={cn(
                     "rounded-lg border px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all",
@@ -167,6 +168,7 @@ export function ItineraryPlanner({
               <Compass className="size-3.5 text-primary" /> Travel Style
             </label>
             <select
+              aria-label="Travel style"
               value={style}
               onChange={(e) => setStyle(e.target.value)}
               className="w-full rounded-lg border border-border bg-secondary px-3 py-2.5 text-xs text-foreground outline-none focus:border-primary"
@@ -183,6 +185,7 @@ export function ItineraryPlanner({
               <MapPin className="size-3.5 text-primary" /> Region
             </label>
             <select
+              aria-label="Travel region"
               value={selectedRegion}
               onChange={(e) => {
                 setSelectedRegion(e.target.value as Region | "all");
@@ -205,6 +208,7 @@ export function ItineraryPlanner({
               <MapPin className="size-3.5 text-primary" /> Preferred State
             </label>
             <select
+              aria-label="Preferred state"
               value={selectedState}
               onChange={(e) => setSelectedState(e.target.value)}
               className="w-full rounded-lg border border-border bg-secondary px-3 py-2.5 text-xs text-foreground outline-none focus:border-primary"
@@ -225,9 +229,10 @@ export function ItineraryPlanner({
             className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3 text-xs uppercase tracking-[0.18em] font-semibold text-primary-foreground shadow-lg hover:opacity-90 transition-all"
           >
             <Sparkles className="size-4" />
-            <span>Generate Optimized Route</span>
+            <span>Create Draft Itinerary</span>
           </button>
         </div>
+        {generationError && <p role="alert" className="mt-4 text-center text-sm text-primary">{generationError}</p>}
       </div>
 
       {/* Generated Itinerary Output */}
@@ -336,9 +341,11 @@ function SlotCard({
   const state = stateById(place.state);
 
   return (
-    <div
+    <button
+      type="button"
       onClick={() => onSelectPlace(place)}
-      className="group cursor-pointer rounded-xl border border-border/70 bg-secondary/40 p-4 transition-all hover:border-primary/60 hover:bg-secondary/70 flex flex-col justify-between"
+      aria-label={"Explore " + place.name + ", " + period}
+      className="group min-w-0 text-left cursor-pointer rounded-xl border border-border/70 bg-secondary/40 p-4 transition-all hover:border-primary/60 hover:bg-secondary/70 flex flex-col justify-between"
     >
       <div className="space-y-3">
         <div className="flex items-center justify-between text-[11px]">
@@ -372,6 +379,6 @@ function SlotCard({
         <span>View Details</span>
         <ArrowRight className="size-3 group-hover:translate-x-1 transition-transform" />
       </div>
-    </div>
+    </button>
   );
 }

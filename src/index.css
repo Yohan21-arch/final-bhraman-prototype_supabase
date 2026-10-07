@@ -224,8 +224,9 @@
 .skip-link:focus { top: 0.5rem; }
 .mobile-navigation { max-height: calc(100dvh - 64px); overflow-y: auto; overscroll-behavior: contain; }
 .hero-shell { margin-bottom: clamp(3rem, 6vw, 6rem); }
-.hero-stage { position: relative; isolation: isolate; display: flex; flex-direction: column; min-height: 650px; min-height: min(780px, max(650px, 78svh)); border-radius: 1.5rem 1.5rem 0 0; background: var(--secondary); }
+.hero-stage { position: relative; isolation: isolate; display: flex; flex-direction: column; min-height: clamp(560px, 78svh, 780px); border-radius: 1.5rem 1.5rem 0 0; background: var(--secondary); }
 .hero-title { font-size: clamp(3.75rem, 7.7vw, 7.5rem); font-weight: 500; line-height: 0.98; letter-spacing: -0.055em; color: var(--ivory); }
+.hero-copy { padding-block: 3rem; }
 .hero-shade { background: linear-gradient(90deg, rgb(12 13 12 / 0.84), rgb(12 13 12 / 0.4) 55%, rgb(12 13 12 / 0.08)), linear-gradient(0deg, rgb(12 13 12 / 0.92), transparent 55%); }
 .hero-discovery { position: relative; z-index: 20; display: flex; flex-direction: column; gap: 1.5rem; padding: 1.5rem; border: 1px solid var(--border); border-top: 0; border-radius: 0 0 1.5rem 1.5rem; background: var(--card); box-shadow: var(--shadow-surface); }
 .home-section { margin-block: clamp(3.5rem, 7vw, 6rem); }
@@ -245,7 +246,9 @@
   .hero-discovery { flex-direction: row; align-items: center; gap: 3rem; }
 }
 @media (max-width: 639px) {
-  .hero-stage { min-height: 650px; border-radius: 1rem 1rem 0 0; }
+  .hero-stage { min-height: min(650px, 90svh); border-radius: 1rem 1rem 0 0; }
+  .hero-copy { padding-block: clamp(1.5rem, 5svh, 3rem); }
+  .hero-title { font-size: clamp(3rem, 13vw, 3.75rem); }
   .hero-photo img { object-position: 62% center; }
   .hero-shade { background: linear-gradient(90deg, rgb(12 13 12 / 0.72), rgb(12 13 12 / 0.35)), linear-gradient(0deg, rgb(12 13 12 / 0.94), transparent 65%); }
   .experience-card { min-height: 245px; padding: 1.1rem; }
@@ -274,7 +277,7 @@
 .atlas-regions button[aria-pressed=true], .atlas-tags button[aria-pressed=true] { color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, transparent); }
 .atlas-state-select { display: grid; gap: .35rem; font-size: .65rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted-foreground); width: min(100%, 19rem); }
 .atlas-state-select select { width: 100%; min-height: 44px; border: 1px solid var(--border); border-radius: .6rem; background: var(--background); color: var(--foreground); padding: .6rem; font-size: .8rem; text-transform: none; letter-spacing: normal; }
-.atlas-workspace { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 36%); height: 730px; }
+.atlas-workspace { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 36%); height: clamp(480px, calc(100svh - 8rem), 730px); }
 .atlas-canvas { position: relative; min-width: 0; overflow: hidden; background: radial-gradient(ellipse at 48% 40%, color-mix(in srgb, var(--primary) 7%, var(--background)), var(--background)); }
 .atlas-svg { width: 100%; height: calc(100% - 3rem); cursor: grab; }
 .atlas-svg.is-dragging { cursor: grabbing; }
@@ -314,12 +317,12 @@
 .atlas-sheet-handle { display: none; }
 @media (pointer: coarse) { .atlas-touch-controls { display: flex; } }
 @media (max-width: 1023px) {
-  .atlas-workspace { display: block; height: 760px; }
+  .atlas-workspace { --atlas-preview-height: 310px; display: block; height: clamp(600px, calc(100svh - 5rem), 760px); }
   .atlas-canvas { height: 100%; }
   .atlas-touch-controls { display: flex; }
   .atlas-empty { display: none; }
-  .atlas-preview { position: absolute; z-index: 3; bottom: 0; width: 100%; height: 310px; border: 1px solid var(--border); border-bottom: 0; border-radius: 1.4rem 1.4rem 0 0; box-shadow: 0 -12px 40px #0005; transition: height .25s ease; }
-  .atlas-preview.is-expanded { height: 60%; }
+  .atlas-preview { position: absolute; z-index: 3; bottom: 0; width: 100%; height: var(--atlas-preview-height); border: 1px solid var(--border); border-bottom: 0; border-radius: 1.4rem 1.4rem 0 0; box-shadow: 0 -12px 40px #0005; transition: height .25s ease; }
+  .atlas-workspace:has(.atlas-preview.is-expanded) { --atlas-preview-height: 60%; }
   .atlas-preview-header { padding: .25rem 1rem .8rem; }
   .atlas-preview-header h3 { font-size: 1.65rem; }
   .atlas-state-description { display: none; }
@@ -336,15 +339,14 @@
   .atlas-state-select { width: 100%; }
   .atlas-toolbar { left: .5rem; right: .5rem; }
   .atlas-control { width: 44px; }
-  .atlas-workspace { height: 740px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .atlas-shell *, .atlas-shell *::before { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }
 
 @media (max-width: 1023px) {
-  .atlas-workspace:has(.atlas-preview) .atlas-svg { height: 430px; }
-  .atlas-workspace:has(.atlas-preview) .atlas-map-caption { top: auto; bottom: 320px; }
+  .atlas-workspace:has(.atlas-preview) .atlas-svg { height: calc(100% - var(--atlas-preview-height)); }
+  .atlas-workspace:has(.atlas-preview) .atlas-map-caption { top: auto; bottom: calc(var(--atlas-preview-height) + 10px); }
 }
 
 /* Phase 5: editorial discovery and destination chapters. */
@@ -560,4 +562,3 @@
 
 .profile-menu button { min-height: 44px; min-width: 44px; }
 .account-content button[title="Remove from saved"], .account-content button[title="Remove from list"] { min-width: 44px; }
-

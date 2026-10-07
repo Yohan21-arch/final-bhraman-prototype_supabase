@@ -141,6 +141,9 @@ function BhramanApp() {
     const restore = pendingRestore.current;
     pendingRestore.current = null;
     window.scrollTo({ top: restore?.scrollY || 0, behavior: "instant" });
+    // A fast dialog open or interaction must not lose focus when the page fade finishes.
+    if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+    if (!restore && document.activeElement !== document.body && document.getElementById("main-content")?.contains(document.activeElement)) return;
     const target = (restore?.focusId && document.getElementById(restore.focusId))
       || document.getElementById(restore && activeTab === "map" && !activePlace && !activeState ? "india-explorer" : "main-content");
     target?.focus({ preventScroll: true });
@@ -703,6 +706,5 @@ export default function App() {
     </MotionConfig>
   );
 }
-
 
 

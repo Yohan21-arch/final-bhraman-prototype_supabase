@@ -32,8 +32,9 @@ export function StateGuide({
   // Escape key support to close / go back
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
       const activeEl = document.activeElement;
-      const isInput = activeEl?.tagName === "INPUT" || activeEl?.tagName === "TEXTAREA";
+      const isInput = activeEl && ["INPUT", "TEXTAREA", "SELECT"].includes(activeEl.tagName);
       if (e.key === "Escape" && !isInput) {
         if (onClose) onClose();
         else onBack();
@@ -46,7 +47,7 @@ export function StateGuide({
   return (
     <main className="mx-auto max-w-6xl px-4 pb-28 pt-6 md:px-8">
       {/* State Top Navigation Bar */}
-      <div className="flex items-center justify-between gap-2 sm:gap-3 mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 mb-6">
         <button
           id="state-back-btn"
           onClick={onBack}
@@ -67,9 +68,9 @@ export function StateGuide({
                 )
               }
               aria-label={`Ask Yatra About ${state.name}`}
-              className="inline-flex min-h-[44px] items-center gap-1.5 sm:gap-2 rounded-full border border-[#F2A93B]/50 bg-[#17233D] px-3 sm:px-4 py-2 text-xs font-semibold text-[#F2A93B] hover:bg-[#101A30] transition-all shadow-xs shrink-0"
+              className="inline-flex min-h-[44px] items-center gap-1.5 sm:gap-2 rounded-full border border-primary/50 bg-card px-3 sm:px-4 py-2 text-xs font-semibold text-primary hover:bg-secondary transition-colors shadow-xs"
             >
-              <Sparkles className="size-3.5 text-[#F2A93B]" />
+              <Sparkles className="size-3.5 shrink-0 text-primary" />
               <span className="hidden sm:inline">Ask Yatra About {state.name}</span>
               <span className="sm:hidden">Ask Yatra</span>
             </button>

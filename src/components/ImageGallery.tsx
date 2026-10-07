@@ -139,7 +139,7 @@ export function ImageGallery({
               <strong className="text-foreground font-semibold">36</strong> States &amp; UTs
             </div>
             <div className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-background/80 px-3.5 py-1 text-xs text-muted-foreground">
-              <strong className="text-foreground font-semibold">100%</strong> Verified Licensing
+              Source &amp; licence details where available
             </div>
 
             <button

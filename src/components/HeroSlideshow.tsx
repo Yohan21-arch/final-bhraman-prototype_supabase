@@ -79,7 +79,7 @@ export function HeroSlideshow({ titleChildren, statsChildren, places = [], onSel
           <div className="hero-shade absolute inset-0" />
         </div>
 
-        <div className="relative z-10 flex flex-1 flex-col justify-center px-6 py-12 sm:px-10 lg:px-14 lg:py-16">
+        <div className="hero-copy relative z-10 flex flex-1 flex-col justify-center px-6 sm:px-10 lg:px-14 lg:py-16">
           {titleChildren || <>
             <p className="eyebrow mb-6 flex items-center gap-3 text-ivory"><span className="h-px w-8 bg-primary" /> A world within a country</p>
             <h1 className="hero-title">Find your<br />own <em className="font-normal text-primary">India.</em></h1>
